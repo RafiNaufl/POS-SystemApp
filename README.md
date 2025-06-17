@@ -16,6 +16,8 @@ Aplikasi Point of Sale (POS) yang lengkap dan modern untuk bisnis penjualan maka
 - Filter berdasarkan kategori
 - Keranjang belanja dengan kalkulasi otomatis
 - Multiple metode pembayaran (Tunai, Kartu, E-Wallet)
+- Sistem voucher dan promosi otomatis
+- Member points dan loyalty program
 - Cetak struk otomatis
 
 ### 🍔 Manajemen Produk
@@ -50,6 +52,27 @@ Aplikasi Point of Sale (POS) yang lengkap dan modern untuk bisnis penjualan maka
 - CRUD pengguna
 - Aktivasi/deaktivasi akun
 - Tracking login terakhir
+
+### 🎟️ Sistem Voucher
+- Buat dan kelola voucher diskon
+- Voucher berdasarkan persentase atau nominal
+- Minimum pembelian dan batas penggunaan
+- Validasi voucher real-time
+- Tracking penggunaan voucher
+
+### 🎯 Sistem Promosi
+- Promosi "Beli X Gratis Y"
+- Promosi diskon berdasarkan kategori
+- Promosi minimum pembelian
+- Kombinasi multiple promosi
+- Kalkulasi diskon otomatis
+
+### 👤 Manajemen Member
+- Registrasi member dengan nomor telepon
+- Sistem poin reward
+- Tukar poin dengan diskon
+- Tracking aktivitas member
+- Laporan member dan poin
 
 ## 🛠️ Teknologi yang Digunakan
 
@@ -143,10 +166,19 @@ Aplikasi Point of Sale (POS) yang lengkap dan modern untuk bisnis penjualan maka
 - id, name, description, price, stock, image, categoryId, isActive, createdAt, updatedAt
 
 ### Transaction
-- id, userId, subtotal, tax, total, paymentMethod, status, createdAt, updatedAt
+- id, userId, subtotal, tax, total, paymentMethod, status, voucherCode, voucherDiscount, promoDiscount, pointsUsed, pointsEarned, memberPhone, createdAt, updatedAt
 
 ### TransactionItem
 - id, transactionId, productId, quantity, price, total
+
+### Member
+- id, phone, name, email, points, totalSpent, createdAt, updatedAt
+
+### Voucher
+- id, code, name, type, value, minPurchase, maxUses, usedCount, isActive, validFrom, validTo, createdAt, updatedAt
+
+### Promotion
+- id, name, type, value, minPurchase, buyQuantity, getQuantity, categoryId, isActive, validFrom, validTo, createdAt, updatedAt
 
 ## 🎯 Penggunaan
 
@@ -157,11 +189,15 @@ Aplikasi Point of Sale (POS) yang lengkap dan modern untuk bisnis penjualan maka
 ### Workflow Kasir
 1. Login ke sistem
 2. Pilih menu "Kasir" dari dashboard
-3. Pilih produk dari daftar atau gunakan pencarian
-4. Atur quantity di keranjang
-5. Pilih metode pembayaran
-6. Proses pembayaran
-7. Cetak struk
+3. (Opsional) Input nomor telepon member untuk poin
+4. Pilih produk dari daftar atau gunakan pencarian
+5. Atur quantity di keranjang
+6. (Opsional) Gunakan voucher diskon
+7. (Opsional) Gunakan poin member untuk diskon
+8. Sistem otomatis menerapkan promosi yang berlaku
+9. Pilih metode pembayaran
+10. Proses pembayaran
+11. Cetak struk dengan detail diskon dan poin
 
 ### Manajemen Produk
 1. Akses menu "Produk"
@@ -176,6 +212,29 @@ Aplikasi Point of Sale (POS) yang lengkap dan modern untuk bisnis penjualan maka
 3. Analisis grafik penjualan
 4. Export data untuk analisis lebih lanjut
 
+### Manajemen Voucher
+1. Akses menu "Voucher"
+2. Buat voucher baru dengan kode unik
+3. Set tipe diskon (persentase/nominal)
+4. Tentukan minimum pembelian dan batas penggunaan
+5. Set periode berlaku voucher
+6. Aktivasi/deaktivasi voucher
+
+### Manajemen Promosi
+1. Akses menu "Promosi"
+2. Pilih tipe promosi (Buy X Get Y, Diskon Kategori, dll)
+3. Set parameter promosi (quantity, diskon, kategori)
+4. Tentukan minimum pembelian jika diperlukan
+5. Set periode berlaku promosi
+6. Aktivasi/deaktivasi promosi
+
+### Manajemen Member
+1. Akses menu "Member"
+2. Registrasi member baru dengan nomor telepon
+3. Lihat detail poin dan riwayat transaksi member
+4. Monitor aktivitas dan total pengeluaran member
+5. Kelola sistem poin reward
+
 ## 🔧 Konfigurasi
 
 ### Pengaturan Pajak
@@ -183,6 +242,13 @@ Ubah nilai `TAX_RATE` di file `.env.local` (contoh: 0.1 untuk 10%)
 
 ### Mata Uang
 Ubah nilai `CURRENCY` di file `.env.local` (contoh: "IDR", "USD")
+
+### Sistem Poin Member
+Konfigurasi sistem poin di file `.env.local`:
+```env
+POINTS_PER_RUPIAH="1"     # 1 poin per 1000 rupiah
+POINT_VALUE="1000"        # 1 poin = 1000 rupiah diskon
+```
 
 ### Upload Gambar
 Konfigurasi penyimpanan gambar di `next.config.js`
@@ -241,6 +307,15 @@ Jika Anda memiliki pertanyaan atau membutuhkan bantuan:
 
 ## 🔄 Changelog
 
+### v2.0.0 (2024-01-22)
+- 🎟️ Sistem voucher lengkap dengan validasi
+- 🎯 Sistem promosi multi-tipe (Buy X Get Y, Diskon Kategori)
+- 👤 Manajemen member dengan sistem poin reward
+- 💰 Integrasi voucher dan promosi di kasir
+- 📊 Laporan voucher dan member
+- 🔧 Konfigurasi sistem poin yang fleksibel
+- 🎨 UI/UX improvements untuk semua fitur baru
+
 ### v1.0.0 (2024-01-21)
 - ✨ Initial release
 - 🎯 Complete POS functionality
@@ -251,16 +326,20 @@ Jika Anda memiliki pertanyaan atau membutuhkan bantuan:
 
 ## 🎯 Roadmap
 
+- [x] ~~Customer management~~ ✅ **Completed (Member System)**
+- [x] ~~Loyalty program~~ ✅ **Completed (Points System)**
 - [ ] Mobile app (React Native)
 - [ ] Inventory management
-- [ ] Customer management
-- [ ] Loyalty program
 - [ ] Multi-store support
 - [ ] Advanced analytics
 - [ ] Integration with payment gateways
 - [ ] Barcode scanning
 - [ ] Kitchen display system
 - [ ] Online ordering integration
+- [ ] WhatsApp notifications
+- [ ] Advanced voucher features (referral codes)
+- [ ] Seasonal promotions
+- [ ] Member tier system
 
 ---
 
