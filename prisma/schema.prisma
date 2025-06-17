@@ -61,6 +61,11 @@ model Transaction {
   finalTotal  Float
   paymentMethod String          @default("CASH")
   status        String          @default("COMPLETED")
+  paymentStatus String?         // PENDING, PAID, FAILED for Xendit payments
+  xenditChargeId String?        // Xendit charge ID
+  xenditReferenceId String?     // Xendit reference ID
+  paidAt      DateTime?         // When payment was completed
+  failureReason String?         // Reason for payment failure
   userId      String
   customerName String?
   customerPhone String?

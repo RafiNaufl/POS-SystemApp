@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import Navbar from '@/components/Navbar'
+import XenditPaymentModal from '@/components/XenditPaymentModal'
 import {
   ShoppingCartIcon,
   PlusIcon,
@@ -16,6 +17,7 @@ import {
   CreditCardIcon,
   BanknotesIcon,
   XCircleIcon,
+  DevicePhoneMobileIcon,
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
 
@@ -137,12 +139,14 @@ export default function CashierPage() {
   const [member, setMember] = useState<Member | null>(null)
   const [pointsToUse, setPointsToUse] = useState(0)
   const [isSearchingMember, setIsSearchingMember] = useState(false)
-  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'CARD' | 'DIGITAL_WALLET'>('CASH')
+  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'CARD' | 'DIGITAL_WALLET' | 'E_WALLET'>('CASH')
   const [loading, setLoading] = useState(true)
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState('')
   const [showTransactionModal, setShowTransactionModal] = useState(false)
-  const [completedTransaction, setCompletedTransaction] = useState<Transaction | null>(null)
+  const [completedTransaction, setCompletedTransaction] = useState<any>(null)
+  const [showXenditModal, setShowXenditModal] = useState(false)
+  const [pendingTransaction, setPendingTransaction] = useState<any>(null)
   const [voucherCode, setVoucherCode] = useState('')
   const [appliedVoucher, setAppliedVoucher] = useState<Voucher | null>(null)
   const [voucherDiscount, setVoucherDiscount] = useState(0)
@@ -160,6 +164,21 @@ export default function CashierPage() {
     fetchCategories()
     fetchAvailableVouchers()
     fetchAvailablePromotions()
+  }, [])
+
+  // Handle payment success from Xendit redirect
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const paymentStatus = urlParams.get('payment')
+    const transactionId = urlParams.get('transaction_id')
+    
+    if (paymentStatus === 'success' && transactionId) {
+      // Clear URL parameters
+      window.history.replaceState({}, document.title, window.location.pathname)
+      
+      // Handle successful payment
+      handleXenditPaymentSuccess({ id: transactionId })
+    }
   }, [])
 
   const fetchProducts = async () => {
@@ -494,6 +513,14 @@ export default function CashierPage() {
         promoDiscount: totals.promotionDiscount
       }
       
+      // For E-Wallet payments, open Xendit modal
+      if (paymentMethod === 'E_WALLET') {
+        setPendingTransaction(transactionData)
+        setShowXenditModal(true)
+        setIsProcessing(false)
+        return
+      }
+      
       const response = await fetch('/api/transactions', {
         method: 'POST',
         headers: {
@@ -538,6 +565,81 @@ export default function CashierPage() {
     } finally {
       setIsProcessing(false)
     }
+  }
+
+  const handleXenditPaymentSuccess = async (transaction: any) => {
+    setShowXenditModal(false)
+    setPendingTransaction(null)
+    
+    try {
+      // Fetch the complete transaction from database
+      const response = await fetch(`/api/transactions/${transaction.id}`)
+      if (response.ok) {
+        const completeTransaction = await response.json()
+        
+        // Set completed transaction data for modal
+        const transactionWithItems = {
+          ...completeTransaction,
+          items: cart, // Use cart items for display
+          appliedPromotions: appliedPromotions
+        }
+        
+        setCompletedTransaction(transactionWithItems)
+        setShowTransactionModal(true)
+      } else {
+        // Fallback to original behavior if fetch fails
+        const transactionWithItems = {
+          id: transaction.id,
+          items: cart,
+          total: transaction.total,
+          paymentMethod: 'E_WALLET',
+          customerName: customerName || undefined,
+          createdAt: new Date(),
+          pointsUsed: pointsToUse,
+          pointsEarned: transaction.pointsEarned || 0,
+          voucherCode: appliedVoucher?.code || null,
+          voucherDiscount: transaction.voucherDiscount || 0,
+          promotionDiscount: transaction.promotionDiscount || 0,
+          appliedPromotions: appliedPromotions
+        }
+        
+        setCompletedTransaction(transactionWithItems)
+        setShowTransactionModal(true)
+      }
+    } catch (error) {
+      console.error('Error fetching transaction:', error)
+      // Fallback to original behavior
+      const transactionWithItems = {
+        id: transaction.id,
+        items: cart,
+        total: transaction.total,
+        paymentMethod: 'E_WALLET',
+        customerName: customerName || undefined,
+        createdAt: new Date(),
+        pointsUsed: pointsToUse,
+        pointsEarned: transaction.pointsEarned || 0,
+        voucherCode: appliedVoucher?.code || null,
+        voucherDiscount: transaction.voucherDiscount || 0,
+        promotionDiscount: transaction.promotionDiscount || 0,
+        appliedPromotions: appliedPromotions
+      }
+      
+      setCompletedTransaction(transactionWithItems)
+      setShowTransactionModal(true)
+    }
+    
+    // Clear cart and refresh products
+    clearCart()
+    fetchProducts()
+    
+    toast.success('Pembayaran E-Wallet berhasil!')
+  }
+
+  const handleXenditPaymentError = (error: string) => {
+    setShowXenditModal(false)
+    setPendingTransaction(null)
+    setIsProcessing(false)
+    toast.error('Pembayaran E-Wallet gagal: ' + error)
   }
 
   const printReceipt = () => {
@@ -1187,7 +1289,8 @@ export default function CashierPage() {
                     {[
                       { value: 'CASH', label: 'Tunai', icon: BanknotesIcon },
                       { value: 'CARD', label: 'Kartu', icon: CreditCardIcon },
-                      { value: 'DIGITAL_WALLET', label: 'E-Wallet', icon: CreditCardIcon },
+                      { value: 'DIGITAL_WALLET', label: 'Dompet Digital', icon: CreditCardIcon },
+                      { value: 'E_WALLET', label: 'E-Wallet (Xendit)', icon: DevicePhoneMobileIcon },
                     ].map(method => {
                       const IconComponent = method.icon
                       return (
@@ -1361,7 +1464,7 @@ export default function CashierPage() {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {completedTransaction.items.map((item) => (
+                        {completedTransaction.items.map((item: CartItem) => (
                           <tr key={item.id}>
                             <td className="px-4 py-2 text-sm text-gray-900">{item.name}</td>
                             <td className="px-4 py-2 text-sm text-gray-900">{item.quantity}</td>
@@ -1407,7 +1510,7 @@ export default function CashierPage() {
                     )}
                     {completedTransaction.appliedPromotions && completedTransaction.appliedPromotions.length > 0 && (
                       <div className="space-y-1">
-                        {completedTransaction.appliedPromotions.map((applied, index) => (
+                        {completedTransaction.appliedPromotions.map((applied: AppliedPromotion, index: number) => (
                           <div key={index} className="flex justify-between text-green-600">
                             <span className="text-sm text-gray-600">Diskon {applied.promotion.name}:</span>
                             <span className="text-sm text-gray-900">-{formatCurrency(applied.discount)}</span>
@@ -1455,6 +1558,21 @@ export default function CashierPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Xendit Payment Modal */}
+      {showXenditModal && pendingTransaction && (
+        <XenditPaymentModal
+          isOpen={showXenditModal}
+          onClose={() => {
+            setShowXenditModal(false)
+            setPendingTransaction(null)
+            setIsProcessing(false)
+          }}
+          transactionData={pendingTransaction}
+          onSuccess={handleXenditPaymentSuccess}
+          onError={handleXenditPaymentError}
+        />
       )}
       </div>
     </div>

@@ -291,3 +291,50 @@ export async function POST(request: NextRequest) {
     await prisma.$disconnect()
   }
 }
+
+export async function PATCH(request: NextRequest) {
+  const prisma = new PrismaClient()
+  
+  try {
+    const session = await getServerSession(authOptions)
+    
+    if (!session || !session.user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    const body = await request.json()
+    const { id, paymentStatus, xenditChargeId, xenditReferenceId, status } = body
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Transaction ID is required' },
+        { status: 400 }
+      )
+    }
+
+    // Update transaction
+    const updatedTransaction = await prisma.transaction.update({
+      where: { id },
+      data: {
+        ...(paymentStatus && { paymentStatus }),
+        ...(xenditChargeId && { xenditChargeId }),
+        ...(xenditReferenceId && { xenditReferenceId }),
+        ...(status && { status }),
+        ...(paymentStatus === 'PAID' && { paidAt: new Date() })
+      }
+    })
+
+    return NextResponse.json(updatedTransaction)
+  } catch (error) {
+    console.error('Error updating transaction:', error)
+    return NextResponse.json(
+      { error: 'Failed to update transaction' },
+      { status: 500 }
+    )
+  } finally {
+    await prisma.$disconnect()
+  }
+}
