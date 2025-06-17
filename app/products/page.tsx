@@ -38,16 +38,37 @@ export default function ProductsPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [showInactive, setShowInactive] = useState(false)
 
-  // Sample data - in real app, this would come from API
+  // Fetch data from API
   useEffect(() => {
-    setTimeout(() => {
-      setCategories([
-        { id: '1', name: 'Makanan Utama' },
-        { id: '2', name: 'Minuman' },
-        { id: '3', name: 'Dessert' },
-        { id: '4', name: 'Snack' },
-      ])
+    fetchProducts()
+    fetchCategories()
+  }, [])
 
+  const fetchProducts = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/products?includeInactive=true')
+      if (!response.ok) {
+        throw new Error('Failed to fetch products')
+      }
+      const data = await response.json()
+      // Transform API data to match our interface
+      const transformedProducts = data.map((product: any) => ({
+        id: product.id.toString(),
+        name: product.name,
+        description: product.description || '',
+        price: product.price,
+        stock: product.stock,
+        category: product.categoryId.toString(),
+        categoryName: product.category?.name || '',
+        isActive: product.isActive,
+        createdAt: new Date(product.createdAt).toISOString().split('T')[0],
+        image: product.image
+      }))
+      setProducts(transformedProducts)
+    } catch (error) {
+      console.error('Error fetching products:', error)
+      // Fallback to sample data if API fails
       setProducts([
         {
           id: '1',
@@ -59,6 +80,7 @@ export default function ProductsPage() {
           categoryName: 'Makanan Utama',
           isActive: true,
           createdAt: '2024-01-15',
+          image: 'https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=400&h=300&fit=crop&crop=center',
         },
         {
           id: '2',
@@ -70,6 +92,7 @@ export default function ProductsPage() {
           categoryName: 'Makanan Utama',
           isActive: true,
           createdAt: '2024-01-15',
+          image: 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=400&h=300&fit=crop&crop=center',
         },
         {
           id: '3',
@@ -81,6 +104,7 @@ export default function ProductsPage() {
           categoryName: 'Makanan Utama',
           isActive: true,
           createdAt: '2024-01-15',
+          image: 'https://images.unsplash.com/photo-1598103442097-8b74394b95c6?w=400&h=300&fit=crop&crop=center',
         },
         {
           id: '4',
@@ -92,6 +116,7 @@ export default function ProductsPage() {
           categoryName: 'Minuman',
           isActive: true,
           createdAt: '2024-01-15',
+          image: 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=400&h=300&fit=crop&crop=center',
         },
         {
           id: '5',
@@ -103,6 +128,7 @@ export default function ProductsPage() {
           categoryName: 'Minuman',
           isActive: true,
           createdAt: '2024-01-15',
+          image: 'https://images.unsplash.com/photo-1621506289937-a8e4df240d0b?w=400&h=300&fit=crop&crop=center',
         },
         {
           id: '6',
@@ -114,6 +140,7 @@ export default function ProductsPage() {
           categoryName: 'Minuman',
           isActive: false,
           createdAt: '2024-01-15',
+          image: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=400&h=300&fit=crop&crop=center',
         },
         {
           id: '7',
@@ -125,6 +152,7 @@ export default function ProductsPage() {
           categoryName: 'Dessert',
           isActive: true,
           createdAt: '2024-01-15',
+          image: 'https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=400&h=300&fit=crop&crop=center',
         },
         {
           id: '8',
@@ -136,6 +164,7 @@ export default function ProductsPage() {
           categoryName: 'Dessert',
           isActive: true,
           createdAt: '2024-01-15',
+          image: 'https://images.unsplash.com/photo-1551024506-0bccd828d307?w=400&h=300&fit=crop&crop=center',
         },
         {
           id: '9',
@@ -147,6 +176,7 @@ export default function ProductsPage() {
           categoryName: 'Snack',
           isActive: true,
           createdAt: '2024-01-15',
+          image: 'https://images.unsplash.com/photo-1621939514649-280e2ee25f60?w=400&h=300&fit=crop&crop=center',
         },
         {
           id: '10',
@@ -160,9 +190,35 @@ export default function ProductsPage() {
           createdAt: '2024-01-15',
         },
       ])
+    } finally {
       setLoading(false)
-    }, 1000)
-  }, [])
+    }
+  }
+
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch('/api/categories')
+      if (!response.ok) {
+        throw new Error('Failed to fetch categories')
+      }
+      const data = await response.json()
+      // Transform API data to match our interface
+      const transformedCategories = data.map((category: any) => ({
+        id: category.id.toString(),
+        name: category.name
+      }))
+      setCategories(transformedCategories)
+    } catch (error) {
+      console.error('Error fetching categories:', error)
+      // Fallback to sample data if API fails
+      setCategories([
+        { id: '1', name: 'Makanan Utama' },
+        { id: '2', name: 'Minuman' },
+        { id: '3', name: 'Dessert' },
+        { id: '4', name: 'Snack' },
+      ])
+    }
+  }
 
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -316,7 +372,19 @@ export default function ProductsPage() {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             <div className="flex-shrink-0 h-12 w-12">
-                              <div className="h-12 w-12 bg-gray-200 rounded-lg flex items-center justify-center">
+                              {product.image ? (
+                                <img
+                                  src={product.image}
+                                  alt={product.name}
+                                  className="h-12 w-12 rounded-lg object-cover"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.style.display = 'none';
+                                    target.nextElementSibling?.classList.remove('hidden');
+                                  }}
+                                />
+                              ) : null}
+                              <div className={`h-12 w-12 bg-gray-200 rounded-lg flex items-center justify-center ${product.image ? 'hidden' : ''}`}>
                                 <span className="text-gray-400 text-xs">IMG</span>
                               </div>
                             </div>

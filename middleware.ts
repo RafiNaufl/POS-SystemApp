@@ -35,8 +35,8 @@ export default withAuth(
         return NextResponse.redirect(new URL('/cashier', req.url))
       }
       
-      // Allow access to cashier, products (read-only), reports, and transactions
-      const allowedPaths = ['/cashier', '/products', '/reports', '/transactions', '/dashboard']
+      // Allow access to cashier, products (read-only), reports, transactions, and members
+      const allowedPaths = ['/cashier', '/products', '/reports', '/transactions', '/dashboard', '/members']
       const isAllowed = allowedPaths.some(path => pathname.startsWith(path))
       
       if (!isAllowed) {

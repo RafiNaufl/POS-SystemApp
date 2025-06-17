@@ -30,6 +30,7 @@ const navigation: NavItem[] = [
   { name: 'Kasir', href: '/cashier', icon: CreditCardIcon, roles: ['ADMIN', 'CASHIER'] },
   { name: 'Produk', href: '/products', icon: CubeIcon, roles: ['ADMIN', 'CASHIER'] },
   { name: 'Kategori', href: '/categories', icon: TagIcon, roles: ['ADMIN'] },
+  { name: 'Member', href: '/members', icon: UserIcon, roles: ['ADMIN', 'CASHIER'] },
   { name: 'Transaksi', href: '/transactions', icon: ShoppingCartIcon, roles: ['ADMIN', 'CASHIER'] },
   { name: 'Laporan', href: '/reports', icon: DocumentTextIcon, roles: ['ADMIN', 'CASHIER'] },
   { name: 'Pengguna', href: '/users', icon: UsersIcon, roles: ['ADMIN'] },
@@ -54,62 +55,86 @@ export default function Navbar() {
   }
 
   return (
-    <nav className="bg-white shadow-lg">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
-          <div className="flex">
-            <div className="flex-shrink-0 flex items-center">
-              <Link href="/dashboard" className="text-xl font-bold text-gray-800">
-                POS System
+    <nav className="bg-white shadow-lg border-b border-gray-200 sticky top-0 z-50">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex justify-between items-center h-16 px-4 sm:px-6 lg:px-8">
+          {/* Logo and Navigation Links */}
+          <div className="flex items-center space-x-6">
+            {/* Logo */}
+            <div className="flex-shrink-0">
+              <Link href="/dashboard" className="flex items-center space-x-2 group">
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center shadow-sm group-hover:shadow-md transition-all duration-200">
+                  <span className="text-white font-bold text-xs">POS</span>
+                </div>
+                <div className="hidden sm:block">
+                  <span className="text-lg font-bold text-gray-900">
+                    POS System
+                  </span>
+                </div>
               </Link>
             </div>
-            <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
+            
+            {/* Navigation Menu */}
+            <div className="hidden lg:flex items-center space-x-1">
               {filteredNavigation.map((item) => {
                 const isActive = pathname === item.href
                 return (
                   <Link
                     key={item.name}
                     href={item.href}
-                    className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
+                    className={`group flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                       isActive
-                        ? 'border-blue-500 text-gray-900'
-                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                        ? 'bg-blue-600 text-white shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                     }`}
                   >
-                    <item.icon className="w-4 h-4 mr-2" />
-                    {item.name}
+                    <item.icon className={`w-4 h-4 mr-2 transition-colors duration-200 ${
+                      isActive ? 'text-white' : 'text-gray-400 group-hover:text-gray-600'
+                    }`} />
+                    <span>{item.name}</span>
                   </Link>
                 )
               })}
             </div>
           </div>
-          <div className="hidden sm:ml-6 sm:flex sm:items-center">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <UserIcon className="w-5 h-5 text-gray-400" />
-                <span className="text-sm text-gray-700">{session.user.name}</span>
-                <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+          
+          {/* User Info and Actions */}
+          <div className="hidden sm:flex items-center space-x-3">
+            {/* User Profile */}
+            <div className="flex items-center space-x-2 bg-gray-50 px-3 py-2 rounded-lg border border-gray-200">
+              <div className="w-7 h-7 bg-blue-100 rounded-full flex items-center justify-center">
+                <UserIcon className="w-4 h-4 text-blue-600" />
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="text-sm font-medium text-gray-900 truncate">{session.user.name}</span>
+                <span className="text-xs text-blue-600 font-medium">
                   {userRole}
                 </span>
               </div>
-              <button
-                onClick={handleSignOut}
-                className="flex items-center space-x-1 text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md text-sm font-medium"
-              >
-                <ArrowRightOnRectangleIcon className="w-4 h-4" />
-                <span>Keluar</span>
-              </button>
             </div>
+            
+            {/* Logout Button */}
+            <button
+              onClick={handleSignOut}
+              className="flex items-center space-x-1 text-gray-500 hover:text-red-600 hover:bg-red-50 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 border border-gray-200 hover:border-red-200"
+              title="Keluar dari sistem"
+            >
+              <ArrowRightOnRectangleIcon className="w-4 h-4" />
+              <span className="hidden md:block">Keluar</span>
+            </button>
           </div>
-          <div className="-mr-2 flex items-center sm:hidden">
+          
+          {/* Mobile menu button */}
+          <div className="flex items-center sm:hidden">
             <button
               onClick={() => setIsOpen(!isOpen)}
-              className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
+              className="inline-flex items-center justify-center p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 focus:outline-none transition-all duration-200 border border-gray-200"
+              aria-label="Toggle menu"
             >
               {isOpen ? (
-                <XMarkIcon className="block h-6 w-6" />
+                <XMarkIcon className="block h-5 w-5" />
               ) : (
-                <Bars3Icon className="block h-6 w-6" />
+                <Bars3Icon className="block h-5 w-5" />
               )}
             </button>
           </div>
@@ -118,49 +143,54 @@ export default function Navbar() {
 
       {/* Mobile menu */}
       {isOpen && (
-        <div className="sm:hidden">
-          <div className="pt-2 pb-3 space-y-1">
+        <div className="sm:hidden bg-white border-t border-gray-200 shadow-lg">
+          {/* Mobile Navigation */}
+          <div className="px-4 pt-3 pb-3 space-y-1">
             {filteredNavigation.map((item) => {
               const isActive = pathname === item.href
               return (
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`flex items-center pl-3 pr-4 py-2 border-l-4 text-base font-medium ${
+                  className={`group flex items-center px-3 py-3 rounded-lg text-base font-medium transition-all duration-200 ${
                     isActive
-                      ? 'bg-blue-50 border-blue-500 text-blue-700'
-                      : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                   }`}
                   onClick={() => setIsOpen(false)}
                 >
-                  <item.icon className="w-5 h-5 mr-3" />
-                  {item.name}
+                  <item.icon className={`w-5 h-5 mr-3 transition-colors duration-200 ${
+                    isActive ? 'text-white' : 'text-gray-400 group-hover:text-gray-600'
+                  }`} />
+                  <span>{item.name}</span>
                 </Link>
               )
             })}
           </div>
-          <div className="pt-4 pb-3 border-t border-gray-200">
-            <div className="flex items-center px-4">
-              <div className="flex-shrink-0">
-                <UserIcon className="w-8 h-8 text-gray-400" />
+          
+          {/* Mobile User Info */}
+          <div className="px-4 py-3 border-t border-gray-200 bg-gray-50">
+            <div className="flex items-center space-x-3 mb-3">
+              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                <UserIcon className="w-5 h-5 text-blue-600" />
               </div>
-              <div className="ml-3">
-                <div className="text-base font-medium text-gray-800">{session.user.name}</div>
-                <div className="text-sm font-medium text-gray-500">{session.user.email}</div>
-                <div className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full mt-1 inline-block">
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-gray-900 truncate">{session.user.name}</div>
+                <div className="text-xs text-gray-500 truncate">{session.user.email}</div>
+                <div className="text-xs text-blue-600 font-medium mt-1">
                   {userRole}
                 </div>
               </div>
             </div>
-            <div className="mt-3 space-y-1">
-              <button
-                onClick={handleSignOut}
-                className="flex items-center w-full px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100"
-              >
-                <ArrowRightOnRectangleIcon className="w-5 h-5 mr-3" />
-                Keluar
-              </button>
-            </div>
+            
+            {/* Mobile Logout Button */}
+            <button
+              onClick={handleSignOut}
+              className="flex items-center justify-center w-full px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 hover:text-red-600 hover:bg-red-50 transition-all duration-200 border border-gray-200 hover:border-red-200 bg-white"
+            >
+              <ArrowRightOnRectangleIcon className="w-4 h-4 mr-2" />
+              <span>Keluar dari Sistem</span>
+            </button>
           </div>
         </div>
       )}

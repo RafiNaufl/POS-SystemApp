@@ -282,13 +282,26 @@ export default function DashboardPage() {
                       <p className="font-medium text-sm">
                         {transaction.customerName || 'Guest'}
                       </p>
+                      {transaction.customerPhone && (
+                        <p className="text-xs text-gray-500">
+                          HP: {transaction.customerPhone}
+                        </p>
+                      )}
+                      {transaction.customerEmail && (
+                        <p className="text-xs text-gray-500">
+                          Email: {transaction.customerEmail}
+                        </p>
+                      )}
+                      <p className="text-xs text-gray-500">
+                        Kasir: {transaction.user?.name || 'Unknown'}
+                      </p>
                       <p className="text-xs text-gray-500">
                         {(() => {
                           const createdAt = transaction.createdAt ? new Date(transaction.createdAt) : new Date()
                           const isValidDate = createdAt instanceof Date && !isNaN(createdAt.getTime())
                           const validDate = isValidDate ? createdAt : new Date()
                           return validDate.toLocaleString('id-ID')
-                        })()}
+                        })()} 
                       </p>
                       <p className="text-xs text-gray-500">
                         {transaction.items.length} item(s)

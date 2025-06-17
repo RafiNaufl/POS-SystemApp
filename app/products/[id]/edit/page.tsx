@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useParams } from 'next/navigation'
 import {
   ArrowLeftIcon,
   PhotoIcon,
@@ -23,10 +23,27 @@ interface ProductForm {
   image: string
 }
 
-export default function NewProductPage() {
+interface Product {
+  id: string
+  name: string
+  description?: string
+  price: number
+  stock: number
+  category: string
+  categoryName: string
+  isActive: boolean
+  createdAt: string
+  image?: string
+}
+
+export default function EditProductPage() {
   const router = useRouter()
+  const params = useParams()
+  const productId = params.id as string
+  
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(false)
+  const [loadingProduct, setLoadingProduct] = useState(true)
   const [form, setForm] = useState<ProductForm>({
     name: '',
     description: '',
@@ -37,7 +54,66 @@ export default function NewProductPage() {
   })
   const [errors, setErrors] = useState<Partial<ProductForm>>({})
 
-  // Load categories
+  // Sample products data - in real app, this would come from API
+  const sampleProducts: Product[] = [
+    {
+      id: '1',
+      name: 'Nasi Goreng Spesial',
+      description: 'Nasi goreng dengan telur, ayam, dan sayuran',
+      price: 25000,
+      stock: 20,
+      category: '1',
+      categoryName: 'Makanan Utama',
+      isActive: true,
+      createdAt: '2024-01-15',
+    },
+    {
+      id: '2',
+      name: 'Mie Ayam Bakso',
+      description: 'Mie ayam dengan bakso dan pangsit',
+      price: 20000,
+      stock: 15,
+      category: '1',
+      categoryName: 'Makanan Utama',
+      isActive: true,
+      createdAt: '2024-01-15',
+    },
+    {
+      id: '3',
+      name: 'Ayam Bakar',
+      description: 'Ayam bakar bumbu kecap dengan lalapan',
+      price: 30000,
+      stock: 10,
+      category: '1',
+      categoryName: 'Makanan Utama',
+      isActive: true,
+      createdAt: '2024-01-15',
+    },
+    {
+      id: '4',
+      name: 'Es Teh Manis',
+      description: 'Teh manis dingin segar',
+      price: 5000,
+      stock: 50,
+      category: '2',
+      categoryName: 'Minuman',
+      isActive: true,
+      createdAt: '2024-01-15',
+    },
+    {
+      id: '5',
+      name: 'Jus Jeruk',
+      description: 'Jus jeruk segar tanpa gula tambahan',
+      price: 12000,
+      stock: 25,
+      category: '2',
+      categoryName: 'Minuman',
+      isActive: true,
+      createdAt: '2024-01-15',
+    },
+  ]
+
+  // Load categories and product data
   useEffect(() => {
     setCategories([
       { id: '1', name: 'Makanan Utama' },
@@ -45,7 +121,21 @@ export default function NewProductPage() {
       { id: '3', name: 'Dessert' },
       { id: '4', name: 'Snack' },
     ])
-  }, [])
+
+    // Load product data
+    const product = sampleProducts.find(p => p.id === productId)
+    if (product) {
+      setForm({
+        name: product.name,
+        description: product.description || '',
+        price: product.price.toString(),
+        stock: product.stock.toString(),
+        categoryId: product.category,
+        image: product.image || '',
+      })
+    }
+    setLoadingProduct(false)
+  }, [productId])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
@@ -98,28 +188,30 @@ export default function NewProductPage() {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1500))
       
-      // In real app, this would be an API call
-      const productData = {
-        ...form,
-        price: Number(form.price),
-        stock: Number(form.stock),
-        id: Date.now().toString(),
-        isActive: true,
-        createdAt: new Date().toISOString(),
-      }
-      
-      console.log('Product created:', productData)
-      
-      toast.success('Produk berhasil ditambahkan!')
+      toast.success('Produk berhasil diperbarui!')
       router.push('/products')
     } catch (error) {
-      toast.error('Gagal menambahkan produk')
+      toast.error('Gagal memperbarui produk')
     } finally {
       setLoading(false)
     }
   }
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const formatCurrency = (value: string) => {
+    const number = value.replace(/\D/g, '')
+    return new Intl.NumberFormat('id-ID').format(Number(number))
+  }
+
+  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/\D/g, '')
+    setForm(prev => ({ ...prev, price: value }))
+    
+    if (errors.price) {
+      setErrors(prev => ({ ...prev, price: '' }))
+    }
+  }
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
       // Validate file size (2MB max)
@@ -139,7 +231,6 @@ export default function NewProductPage() {
       reader.onload = (event) => {
         const imageUrl = event.target?.result as string
         setForm(prev => ({ ...prev, image: imageUrl }))
-        toast.success('Gambar berhasil dipilih')
       }
       reader.readAsDataURL(file)
     }
@@ -154,6 +245,17 @@ export default function NewProductPage() {
     }
   }
 
+  if (loadingProduct) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Memuat data produk...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -163,7 +265,7 @@ export default function NewProductPage() {
             <Link href="/products" className="mr-4">
               <ArrowLeftIcon className="h-6 w-6 text-gray-600 hover:text-gray-900" />
             </Link>
-            <h1 className="text-2xl font-bold text-gray-900">Tambah Produk Baru</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Edit Produk</h1>
           </div>
         </div>
       </header>
@@ -201,9 +303,9 @@ export default function NewProductPage() {
                   <input
                     type="file"
                     accept="image/*"
-                    onChange={handleImageUpload}
                     className="hidden"
                     id="image-upload"
+                    onChange={handleImageChange}
                   />
                   <label
                     htmlFor="image-upload"
@@ -259,21 +361,24 @@ export default function NewProductPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-2">
-                  Harga (IDR) *
+                  Harga *
                 </label>
-                <input
-                  type="number"
-                  id="price"
-                  name="price"
-                  value={form.price}
-                  onChange={handleInputChange}
-                  min="0"
-                  step="1000"
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    errors.price ? 'border-red-300' : 'border-gray-300'
-                  }`}
-                  placeholder="0"
-                />
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                    Rp
+                  </span>
+                  <input
+                    type="text"
+                    id="price"
+                    name="price"
+                    value={formatCurrency(form.price)}
+                    onChange={handlePriceChange}
+                    className={`w-full pl-10 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      errors.price ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                    placeholder="0"
+                  />
+                </div>
                 {errors.price && (
                   <p className="mt-1 text-sm text-red-600">{errors.price}</p>
                 )}
@@ -281,7 +386,7 @@ export default function NewProductPage() {
 
               <div>
                 <label htmlFor="stock" className="block text-sm font-medium text-gray-700 mb-2">
-                  Stok Awal *
+                  Stok *
                 </label>
                 <input
                   type="number"
@@ -327,35 +432,30 @@ export default function NewProductPage() {
               )}
             </div>
 
-            {/* Form Actions */}
+            {/* Submit Buttons */}
             <div className="flex justify-end space-x-4 pt-6 border-t">
               <Link
                 href="/products"
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium transition-colors"
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium"
               >
                 Batal
               </Link>
               <button
                 type="submit"
                 disabled={loading}
-                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg font-medium transition-colors flex items-center"
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
               >
-                {loading && <div className="spinner mr-2"></div>}
-                {loading ? 'Menyimpan...' : 'Simpan Produk'}
+                {loading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Menyimpan...
+                  </>
+                ) : (
+                  'Simpan Perubahan'
+                )}
               </button>
             </div>
           </form>
-        </div>
-
-        {/* Help Text */}
-        <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <h3 className="text-sm font-medium text-blue-800 mb-2">Tips:</h3>
-          <ul className="text-sm text-blue-700 space-y-1">
-            <li>• Gunakan nama produk yang jelas dan mudah dipahami</li>
-            <li>• Pastikan harga sesuai dengan standar pasar</li>
-            <li>• Stok awal dapat diubah nanti melalui halaman manajemen stok</li>
-            <li>• Gambar produk akan membantu kasir mengidentifikasi produk</li>
-          </ul>
         </div>
       </main>
     </div>

@@ -12,6 +12,7 @@ import {
   XCircleIcon,
   ClockIcon,
 } from '@heroicons/react/24/outline'
+import ReceiptPreview from '../../components/ReceiptPreview'
 
 interface Transaction {
   id: string
@@ -25,6 +26,8 @@ interface Transaction {
   status: 'COMPLETED' | 'CANCELLED' | 'PENDING'
   cashier: string
   customer?: string
+  customerPhone?: string
+  customerEmail?: string
 }
 
 interface TransactionItem {
@@ -45,6 +48,8 @@ export default function TransactionsPage() {
   const [dateFilter, setDateFilter] = useState('ALL')
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null)
   const [showModal, setShowModal] = useState(false)
+  const [showReceiptPreview, setShowReceiptPreview] = useState(false)
+  const [receiptTransaction, setReceiptTransaction] = useState<Transaction | null>(null)
 
   // Fetch transactions from API
   const fetchTransactions = async () => {
@@ -79,7 +84,9 @@ export default function TransactionsPage() {
           paymentMethod: transaction.paymentMethod,
           status: transaction.status,
           cashier: transaction.user.name,
-          customer: transaction.customerName
+          customer: transaction.customerName,
+          customerPhone: transaction.customerPhone,
+          customerEmail: transaction.customerEmail
         }
       })
       
@@ -294,51 +301,14 @@ export default function TransactionsPage() {
   }
 
   const printReceipt = (transaction: Transaction) => {
-    // In real app, this would generate and print a receipt
-    console.log('Printing receipt for transaction:', transaction.id)
-    
-    const receiptContent = `
-      STRUK PEMBAYARAN
-      ================
-      
-      ID Transaksi: ${transaction.id}
-      Tanggal: ${formatDate(transaction.date)} ${transaction.time}
-      Kasir: ${transaction.cashier}
-      ${transaction.customer ? `Pelanggan: ${transaction.customer}` : ''}
-      
-      ITEM PEMBELIAN:
-      ${transaction.items.map(item => 
-        `${item.name} x${item.quantity} = ${formatCurrency(item.total)}`
-      ).join('\n      ')}
-      
-      ================
-      Subtotal: ${formatCurrency(transaction.subtotal)}
-      Pajak: ${formatCurrency(transaction.tax)}
-      TOTAL: ${formatCurrency(transaction.total)}
-      
-      Metode Pembayaran: ${getPaymentMethodLabel(transaction.paymentMethod)}
-      Status: ${transaction.status}
-      
-      Terima kasih atas kunjungan Anda!
-    `
-    
-    // Create a new window for printing
-    const printWindow = window.open('', '_blank')
-    if (printWindow) {
-      printWindow.document.write(`
-        <html>
-          <head>
-            <title>Struk - ${transaction.id}</title>
-            <style>
-              body { font-family: monospace; white-space: pre-line; }
-            </style>
-          </head>
-          <body>${receiptContent}</body>
-        </html>
-      `)
-      printWindow.document.close()
-      printWindow.print()
-    }
+    setReceiptTransaction(transaction)
+    setShowReceiptPreview(true)
+  }
+
+  const handlePrintComplete = () => {
+    setShowReceiptPreview(false)
+    setReceiptTransaction(null)
+    console.log('Receipt printed successfully')
   }
 
   return (
@@ -589,6 +559,12 @@ export default function TransactionsPage() {
                     <div>
                       <p className="text-sm font-medium text-gray-500">Pelanggan</p>
                       <p className="text-sm text-gray-900">{selectedTransaction.customer}</p>
+                      {selectedTransaction.customerPhone && (
+                        <p className="text-sm text-gray-600">No. HP: {selectedTransaction.customerPhone}</p>
+                      )}
+                      {selectedTransaction.customerEmail && (
+                        <p className="text-sm text-gray-600">Email: {selectedTransaction.customerEmail}</p>
+                      )}
                     </div>
                   )}
                   <div>
@@ -692,6 +668,16 @@ export default function TransactionsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Receipt Preview Modal */}
+      {showReceiptPreview && receiptTransaction && (
+        <ReceiptPreview
+          transaction={receiptTransaction}
+          isOpen={showReceiptPreview}
+          onClose={() => setShowReceiptPreview(false)}
+          onPrint={handlePrintComplete}
+        />
       )}
     </div>
   )

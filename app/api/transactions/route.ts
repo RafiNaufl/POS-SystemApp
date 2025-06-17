@@ -43,6 +43,15 @@ export async function GET(request: NextRequest) {
               name: true,
               email: true
             }
+          },
+          member: {
+            select: {
+              id: true,
+              name: true,
+              phone: true,
+              email: true,
+              points: true
+            }
           }
         },
         orderBy: {
@@ -88,7 +97,32 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { items, customerName, paymentMethod, subtotal, tax, total } = body
+    const { items, customerName, customerPhone, customerEmail, paymentMethod, subtotal, tax, total, pointsUsed = 0 } = body
+
+    // Check if customer is a member
+    let member = null
+    if (customerPhone || customerEmail) {
+      member = await prisma.member.findFirst({
+        where: {
+          OR: [
+            customerPhone ? { phone: customerPhone } : {},
+            customerEmail ? { email: customerEmail } : {}
+          ].filter(condition => Object.keys(condition).length > 0)
+        }
+      })
+    }
+
+    // Calculate points earned (1 point per 10,000)
+    const finalTotal = parseFloat(total)
+    const pointsEarned = member ? Math.floor(finalTotal / 10000) : 0
+
+    // Validate points usage
+    if (pointsUsed > 0 && (!member || member.points < pointsUsed)) {
+      return NextResponse.json(
+        { error: 'Insufficient points' },
+        { status: 400 }
+      )
+    }
 
     // Start transaction
     const result = await prisma.$transaction(async (tx: any) => {
@@ -96,10 +130,15 @@ export async function POST(request: NextRequest) {
       const transaction = await tx.transaction.create({
         data: {
           customerName,
+          customerPhone,
+          customerEmail,
+          memberId: member?.id || null,
+          pointsEarned,
+          pointsUsed,
           paymentMethod,
           total: parseFloat(subtotal),
           tax: parseFloat(tax),
-          finalTotal: parseFloat(total),
+          finalTotal,
           userId: session.user.id
         }
       })
@@ -127,6 +166,49 @@ export async function POST(request: NextRequest) {
         })
       }
 
+      // Update member points and create point history
+      if (member) {
+        // Update member points
+        await tx.member.update({
+          where: { id: member.id },
+          data: {
+            points: {
+              increment: pointsEarned - pointsUsed
+            },
+            totalSpent: {
+              increment: finalTotal
+            },
+            lastVisit: new Date()
+          }
+        })
+
+        // Create point history for earned points
+        if (pointsEarned > 0) {
+          await tx.pointHistory.create({
+            data: {
+              memberId: member.id,
+              points: pointsEarned,
+              type: 'EARNED',
+              description: `Earned ${pointsEarned} points from transaction`,
+              transactionId: transaction.id
+            }
+          })
+        }
+
+        // Create point history for used points
+        if (pointsUsed > 0) {
+          await tx.pointHistory.create({
+            data: {
+              memberId: member.id,
+              points: -pointsUsed,
+              type: 'REDEEMED',
+              description: `Used ${pointsUsed} points for transaction`,
+              transactionId: transaction.id
+            }
+          })
+        }
+      }
+
       return transaction
     })
 
@@ -143,6 +225,15 @@ export async function POST(request: NextRequest) {
           select: {
             name: true,
             email: true
+          }
+        },
+        member: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            email: true,
+            points: true
           }
         }
       }

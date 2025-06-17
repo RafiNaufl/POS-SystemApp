@@ -58,12 +58,19 @@ model Transaction {
   status        String          @default("COMPLETED")
   userId      String
   customerName String?
+  customerPhone String?
+  customerEmail String?
+  memberId    String?
+  pointsEarned Int              @default(0)
+  pointsUsed  Int              @default(0)
   notes       String?
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
   
-  user  User              @relation(fields: [userId], references: [id])
-  items TransactionItem[]
+  user         User              @relation(fields: [userId], references: [id])
+  member       Member?           @relation(fields: [memberId], references: [id])
+  items        TransactionItem[]
+  pointHistory PointHistory[]
 }
 
 model TransactionItem {
@@ -78,7 +85,32 @@ model TransactionItem {
   product     Product     @relation(fields: [productId], references: [id])
 }
 
-// SQLite doesn't support enums, using String instead
-// Role values: ADMIN, MANAGER, CASHIER
-// PaymentMethod values: CASH, CARD, DIGITAL_WALLET  
-// TransactionStatus values: PENDING, COMPLETED, CANCELLED, REFUNDED
+model Member {
+  id          String   @id @default(cuid())
+  name        String
+  phone       String?  @unique
+  email       String?  @unique
+  points      Int      @default(0)
+  totalSpent  Float    @default(0)
+  joinDate    DateTime @default(now())
+  lastVisit   DateTime @default(now())
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  transactions Transaction[]
+  pointHistory PointHistory[]
+}
+
+model PointHistory {
+  id          String   @id @default(cuid())
+  memberId    String
+  points      Int      // positive for earned, negative for redeemed
+  type        String   // EARNED, REDEEMED, EXPIRED, ADJUSTED
+  description String?
+  transactionId String?
+  createdAt   DateTime @default(now())
+  
+  member      Member       @relation(fields: [memberId], references: [id])
+  transaction Transaction? @relation(fields: [transactionId], references: [id])
+}

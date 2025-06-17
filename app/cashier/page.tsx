@@ -14,6 +14,7 @@ import {
   PrinterIcon,
   CreditCardIcon,
   BanknotesIcon,
+  XCircleIcon,
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
 
@@ -45,6 +46,17 @@ interface Transaction {
   paymentMethod: string
   customerName?: string
   createdAt: Date
+  pointsUsed?: number
+  pointsEarned?: number
+}
+
+interface Member {
+  id: string
+  name: string
+  phone?: string
+  email?: string
+  points: number
+  totalSpent: number
 }
 
 export default function CashierPage() {
@@ -55,10 +67,17 @@ export default function CashierPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [customerName, setCustomerName] = useState('')
+  const [customerPhone, setCustomerPhone] = useState('')
+  const [customerEmail, setCustomerEmail] = useState('')
+  const [member, setMember] = useState<Member | null>(null)
+  const [pointsToUse, setPointsToUse] = useState(0)
+  const [isSearchingMember, setIsSearchingMember] = useState(false)
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'CARD' | 'DIGITAL_WALLET'>('CASH')
   const [loading, setLoading] = useState(true)
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState('')
+  const [showTransactionModal, setShowTransactionModal] = useState(false)
+  const [completedTransaction, setCompletedTransaction] = useState<Transaction | null>(null)
 
   // Fetch products and categories from API
   useEffect(() => {
@@ -156,14 +175,85 @@ export default function CashierPage() {
   const clearCart = () => {
     setCart([])
     setCustomerName('')
+    setCustomerPhone('')
+    setCustomerEmail('')
+    setMember(null)
+    setPointsToUse(0)
     toast.success('Keranjang dikosongkan')
+  }
+
+  // Member functions
+  const searchMember = async () => {
+    if (!customerPhone && !customerEmail) {
+      toast.error('Masukkan nomor HP atau email untuk mencari member')
+      return
+    }
+
+    setIsSearchingMember(true)
+    try {
+      const params = new URLSearchParams()
+      if (customerPhone) params.append('phone', customerPhone)
+      if (customerEmail) params.append('email', customerEmail)
+
+      const response = await fetch(`/api/members/search?${params}`)
+      
+      if (response.ok) {
+        const memberData = await response.json()
+        setMember(memberData)
+        setCustomerName(memberData.name)
+        toast.success(`Member ditemukan: ${memberData.name} (${memberData.points} poin)`)
+      } else {
+        setMember(null)
+        toast.error('Member tidak ditemukan')
+      }
+    } catch (error) {
+      console.error('Error searching member:', error)
+      toast.error('Gagal mencari member')
+    } finally {
+      setIsSearchingMember(false)
+    }
+  }
+
+  const createNewMember = async () => {
+    if (!customerName) {
+      toast.error('Nama pelanggan harus diisi')
+      return
+    }
+
+    try {
+      const response = await fetch('/api/members', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: customerName,
+          phone: customerPhone || null,
+          email: customerEmail || null
+        })
+      })
+
+      if (response.ok) {
+        const newMember = await response.json()
+        setMember(newMember)
+        toast.success(`Member baru berhasil dibuat: ${newMember.name}`)
+      } else {
+        const error = await response.json()
+        toast.error(error.error || 'Gagal membuat member baru')
+      }
+    } catch (error) {
+      console.error('Error creating member:', error)
+      toast.error('Gagal membuat member baru')
+    }
   }
 
   const calculateTotal = () => {
     const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0)
     const tax = subtotal * 0.1 // 10% tax
-    const total = subtotal + tax
-    return { subtotal, tax, total }
+    const pointsDiscount = pointsToUse * 1000 // 1 poin = 1000 rupiah
+    const total = Math.max(0, subtotal + tax - pointsDiscount)
+    const pointsEarned = member ? Math.floor(total / 10000) : 0
+    return { subtotal, tax, total, pointsDiscount, pointsEarned }
   }
 
   const processPayment = async () => {
@@ -187,7 +277,10 @@ export default function CashierPage() {
         tax: totals.tax,
         total: totals.total,
         paymentMethod,
-        customerName: customerName || null
+        customerName: customerName || null,
+        customerPhone: customerPhone || null,
+        customerEmail: customerEmail || null,
+        pointsUsed: pointsToUse
       }
       
       const response = await fetch('/api/transactions', {
@@ -204,8 +297,20 @@ export default function CashierPage() {
       
       const transaction = await response.json()
       
-      // Print receipt
-      printReceipt()
+      // Set completed transaction data for modal
+      const transactionWithItems = {
+        id: transaction.id,
+        items: cart,
+        total: totals.total,
+        paymentMethod,
+        customerName: customerName || undefined,
+        createdAt: new Date(),
+        pointsUsed: pointsToUse,
+        pointsEarned: totals.pointsEarned
+      }
+      
+      setCompletedTransaction(transactionWithItems)
+      setShowTransactionModal(true)
       
       // Clear cart and refresh products
       clearCart()
@@ -222,12 +327,17 @@ export default function CashierPage() {
 
   const printReceipt = () => {
     const { subtotal, tax, total } = calculateTotal()
+    const pointsUsed = completedTransaction?.pointsUsed ?? 0
+    const pointsEarned = completedTransaction?.pointsEarned ?? 0
+    const pointDiscount = pointsUsed * 1000
+    
     const receiptContent = `
       ===== POS RESTAURANT =====
       Tanggal: ${new Date().toLocaleDateString('id-ID')}
       Waktu: ${new Date().toLocaleTimeString('id-ID')}
-      Kasir: Admin
+      Kasir: ${session?.user?.name || 'Admin'}
       ${customerName ? `Pelanggan: ${customerName}` : ''}
+      ${member ? `Member: ${member.name} (${member.phone})` : ''}
       
       ===== DETAIL PESANAN =====
       ${cart.map(item => 
@@ -237,9 +347,12 @@ export default function CashierPage() {
       ===== TOTAL =====
       Subtotal: ${formatCurrency(subtotal)}
       Pajak (10%): ${formatCurrency(tax)}
+      ${pointsUsed > 0 ? `Diskon Poin (${pointsUsed} poin): -${formatCurrency(pointDiscount)}` : ''}
       Total: ${formatCurrency(total)}
       
       Metode Pembayaran: ${paymentMethod}
+      
+      ${member && pointsEarned > 0 ? `===== POIN MEMBER =====\nPoin yang didapat: +${pointsEarned} poin\nTotal poin sekarang: ${(member.points || 0) + pointsEarned} poin\n` : ''}
       
       Terima kasih atas kunjungan Anda!
     `
@@ -353,8 +466,20 @@ export default function CashierPage() {
                       className="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow cursor-pointer"
                       onClick={() => addToCart(product)}
                     >
-                      <div className="aspect-square bg-gray-200 rounded-lg mb-3 flex items-center justify-center">
-                        <span className="text-gray-500 text-sm">No Image</span>
+                      <div className="aspect-square bg-gray-200 rounded-lg mb-3 flex items-center justify-center overflow-hidden">
+                        {product.image ? (
+                          <img
+                            src={product.image}
+                            alt={product.name}
+                            className="w-full h-full object-cover rounded-lg"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                              target.nextElementSibling?.classList.remove('hidden');
+                            }}
+                          />
+                        ) : null}
+                        <span className={`text-gray-500 text-sm ${product.image ? 'hidden' : ''}`}>No Image</span>
                       </div>
                       <h3 className="font-semibold text-gray-900 mb-1">{product.name}</h3>
                       <p className="text-blue-600 font-bold mb-2">{formatCurrency(product.price)}</p>
@@ -399,15 +524,102 @@ export default function CashierPage() {
                 )}
               </div>
 
-              {/* Customer Name */}
-              <div className="mb-4">
-                <input
-                  type="text"
-                  placeholder="Nama pelanggan (opsional)"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
+              {/* Customer Details */}
+              <div className="mb-4 space-y-3">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <h4 className="text-sm font-medium text-blue-800 mb-2">Informasi Member</h4>
+                  
+                  <input
+                    type="text"
+                    placeholder="Nama pelanggan"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-2"
+                    disabled={member !== null}
+                  />
+                  
+                  <div className="flex space-x-2 mb-2">
+                    <input
+                      type="tel"
+                      placeholder="No. Handphone"
+                      value={customerPhone}
+                      onChange={(e) => setCustomerPhone(e.target.value)}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      disabled={member !== null}
+                    />
+                    <button
+                      onClick={searchMember}
+                      disabled={isSearchingMember || (!customerPhone && !customerEmail)}
+                      className="px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white text-sm rounded-lg transition-colors"
+                    >
+                      {isSearchingMember ? 'Cari...' : 'Cari'}
+                    </button>
+                  </div>
+                  
+                  <input
+                    type="email"
+                    placeholder="Email"
+                    value={customerEmail}
+                    onChange={(e) => setCustomerEmail(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-2"
+                    disabled={member !== null}
+                  />
+                  
+                  {member ? (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3 mt-2">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm font-medium text-green-800">Member: {member.name}</span>
+                        <button
+                          onClick={() => {
+                            setMember(null)
+                            setPointsToUse(0)
+                            setCustomerName('')
+                            setCustomerPhone('')
+                            setCustomerEmail('')
+                          }}
+                          className="text-red-600 hover:text-red-800 text-sm"
+                        >
+                          Reset
+                        </button>
+                      </div>
+                      <p className="text-sm text-green-700">Poin tersedia: {member.points}</p>
+                      <p className="text-sm text-green-700">Total belanja: {formatCurrency(member.totalSpent)}</p>
+                      
+                      {member.points > 0 && (
+                        <div className="mt-2">
+                          <label className="block text-sm font-medium text-green-700 mb-1">
+                            Gunakan Poin (1 poin = Rp 1.000)
+                          </label>
+                          <div className="flex space-x-2">
+                            <input
+                              type="number"
+                              min="0"
+                              max={Math.min(member.points, Math.floor(calculateTotal().total / 1000))}
+                              value={pointsToUse}
+                              onChange={(e) => setPointsToUse(parseInt(e.target.value) || 0)}
+                              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            />
+                            <button
+                              onClick={() => setPointsToUse(Math.min(member.points, Math.floor(calculateTotal().total / 1000)))}
+                              className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition-colors"
+                            >
+                              Max
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    customerName && (customerPhone || customerEmail) && (
+                      <button
+                        onClick={createNewMember}
+                        className="w-full px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition-colors"
+                      >
+                        Daftar sebagai Member Baru
+                      </button>
+                    )
+                  )}
+                </div>
               </div>
 
               {/* Cart Items */}
@@ -496,10 +708,24 @@ export default function CashierPage() {
                       <span>Pajak (10%):</span>
                       <span>{formatCurrency(tax)}</span>
                     </div>
+                    {pointsToUse > 0 && (
+                      <div className="flex justify-between text-green-600">
+                        <span>Diskon Poin ({pointsToUse} poin):</span>
+                        <span>-{formatCurrency(pointsToUse * 1000)}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between font-semibold text-lg border-t pt-2">
                       <span>Total:</span>
                       <span className="text-blue-600">{formatCurrency(total)}</span>
                     </div>
+                    {calculateTotal().pointsEarned > 0 && (
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-2 mt-2">
+                        <div className="flex justify-between text-sm text-yellow-800">
+                          <span>Poin yang akan didapat:</span>
+                          <span className="font-medium">+{calculateTotal().pointsEarned} poin</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -527,6 +753,168 @@ export default function CashierPage() {
           </div>
         </div>
       </div>
+
+      {/* Transaction Success Modal */}
+      {showTransactionModal && completedTransaction && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium text-gray-900">
+                  Pembayaran Berhasil!
+                </h3>
+                <button
+                  onClick={() => setShowTransactionModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <XCircleIcon className="h-6 w-6" />
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                {/* Transaction Info */}
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0">
+                      <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                        <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                    </div>
+                    <div className="ml-3">
+                      <h4 className="text-sm font-medium text-green-800">
+                        Transaksi ID: {completedTransaction.id}
+                      </h4>
+                      <p className="text-sm text-green-700">
+                        {completedTransaction.createdAt.toLocaleString('id-ID')}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Customer Info */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Kasir</p>
+                    <p className="text-sm text-gray-900">{session?.user?.name}</p>
+                  </div>
+                  {completedTransaction.customerName && (
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Pelanggan</p>
+                      <p className="text-sm text-gray-900">{completedTransaction.customerName}</p>
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Metode Pembayaran</p>
+                    <p className="text-sm text-gray-900">
+                      {completedTransaction.paymentMethod === 'CASH' ? 'Tunai' :
+                       completedTransaction.paymentMethod === 'CARD' ? 'Kartu' : 'Dompet Digital'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Items */}
+                <div>
+                  <h4 className="text-sm font-medium text-gray-900 mb-2">Item Pembelian</h4>
+                  <div className="border rounded-lg overflow-hidden">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                            Produk
+                          </th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                            Qty
+                          </th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                            Harga
+                          </th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                            Total
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {completedTransaction.items.map((item) => (
+                          <tr key={item.id}>
+                            <td className="px-4 py-2 text-sm text-gray-900">{item.name}</td>
+                            <td className="px-4 py-2 text-sm text-gray-900">{item.quantity}</td>
+                            <td className="px-4 py-2 text-sm text-gray-900">
+                              {formatCurrency(item.price)}
+                            </td>
+                            <td className="px-4 py-2 text-sm text-gray-900">
+                              {formatCurrency(item.price * item.quantity)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Totals */}
+                <div className="border-t pt-4">
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Subtotal:</span>
+                      <span className="text-sm text-gray-900">
+                        {formatCurrency(completedTransaction.total / 1.1)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Pajak (10%):</span>
+                      <span className="text-sm text-gray-900">
+                        {formatCurrency(completedTransaction.total * 0.1 / 1.1)}
+                      </span>
+                    </div>
+                    {(completedTransaction.pointsUsed ?? 0) > 0 && (
+                      <div className="flex justify-between text-green-600">
+                        <span className="text-sm text-gray-600">Diskon Poin ({completedTransaction.pointsUsed} poin):</span>
+                        <span className="text-sm text-gray-900">-{formatCurrency((completedTransaction.pointsUsed ?? 0) * 1000)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between font-medium text-lg border-t pt-2">
+                      <span className="text-gray-900">Total:</span>
+                      <span className="text-green-600">
+                        {formatCurrency(completedTransaction.total)}
+                      </span>
+                    </div>
+                    {(completedTransaction.pointsEarned ?? 0) > 0 && (
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-2 mt-2">
+                        <div className="flex justify-between text-sm text-yellow-800">
+                          <span>Poin yang didapat:</span>
+                          <span className="font-medium">+{completedTransaction.pointsEarned} poin</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex justify-end space-x-3 pt-4">
+                  <button
+                    onClick={() => {
+                      printReceipt()
+                      setShowTransactionModal(false)
+                    }}
+                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center"
+                  >
+                    <PrinterIcon className="h-5 w-5 mr-2" />
+                    Cetak Struk
+                  </button>
+                  <button
+                    onClick={() => setShowTransactionModal(false)}
+                    className="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded-lg font-medium transition-colors"
+                  >
+                    Tutup
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

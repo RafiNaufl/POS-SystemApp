@@ -5,7 +5,13 @@ export async function GET(request: NextRequest) {
   const prisma = new PrismaClient()
   
   try {
+    const { searchParams } = new URL(request.url)
+    const includeInactive = searchParams.get('includeInactive') === 'true'
+    
+    const whereClause = includeInactive ? {} : { isActive: true }
+    
     const products = await prisma.product.findMany({
+      where: whereClause,
       include: {
         category: true
       },
@@ -31,7 +37,7 @@ export async function POST(request: NextRequest) {
   
   try {
     const body = await request.json()
-    const { name, price, categoryId, stock, description } = body
+    const { name, price, categoryId, stock, description, image } = body
 
     const product = await prisma.product.create({
       data: {
@@ -39,7 +45,8 @@ export async function POST(request: NextRequest) {
         price: parseFloat(price),
         categoryId,
         stock: parseInt(stock),
-        description
+        description,
+        image
       },
       include: {
         category: true
