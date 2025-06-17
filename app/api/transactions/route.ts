@@ -52,6 +52,16 @@ export async function GET(request: NextRequest) {
               email: true,
               points: true
             }
+          },
+          voucherUsages: {
+            include: {
+              voucher: {
+                select: {
+                  code: true,
+                  name: true
+                }
+              }
+            }
           }
         },
         orderBy: {
@@ -97,7 +107,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { items, customerName, customerPhone, customerEmail, paymentMethod, subtotal, tax, total, pointsUsed = 0 } = body
+    const { items, customerName, customerPhone, customerEmail, paymentMethod, subtotal, tax, total, pointsUsed = 0, voucherCode, voucherDiscount = 0, promoDiscount = 0 } = body
 
     // Check if customer is a member
     let member = null
@@ -139,6 +149,8 @@ export async function POST(request: NextRequest) {
           total: parseFloat(subtotal),
           tax: parseFloat(tax),
           finalTotal,
+          voucherDiscount,
+          promoDiscount,
           userId: session.user.id
         }
       })
@@ -201,9 +213,38 @@ export async function POST(request: NextRequest) {
             data: {
               memberId: member.id,
               points: -pointsUsed,
-              type: 'REDEEMED',
+              type: 'USED',
               description: `Used ${pointsUsed} points for transaction`,
               transactionId: transaction.id
+            }
+          })
+        }
+      }
+
+      // Record voucher usage if voucher was applied
+      if (voucherCode) {
+        const voucher = await tx.voucher.findUnique({
+          where: { code: voucherCode }
+        })
+        
+        if (voucher) {
+          await tx.voucherUsage.create({
+            data: {
+              voucherId: voucher.id,
+              userId: transaction.memberId ? null : session.user.id,
+              memberId: transaction.memberId || null,
+              transactionId: transaction.id,
+              discountAmount: voucherDiscount
+            }
+          })
+          
+          // Update voucher usage count
+          await tx.voucher.update({
+            where: { id: voucher.id },
+            data: {
+              usageCount: {
+                increment: 1
+              }
             }
           })
         }

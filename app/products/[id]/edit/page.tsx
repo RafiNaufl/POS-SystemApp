@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useRouter, useParams } from 'next/navigation'
 import {
   ArrowLeftIcon,
@@ -135,7 +136,7 @@ export default function EditProductPage() {
       })
     }
     setLoadingProduct(false)
-  }, [productId])
+  }, [productId, sampleProducts])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
@@ -282,9 +283,11 @@ export default function EditProductPage() {
                 <div className="relative w-24 h-24 bg-gray-200 rounded-lg flex items-center justify-center">
                   {form.image ? (
                     <>
-                      <img 
+                      <Image 
                         src={form.image} 
                         alt="Preview" 
+                        width={96}
+                        height={96}
                         className="w-full h-full object-cover rounded-lg"
                       />
                       <button

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import {
   ArrowLeftIcon,
@@ -180,9 +181,11 @@ export default function NewProductPage() {
                 <div className="relative w-24 h-24 bg-gray-200 rounded-lg flex items-center justify-center">
                   {form.image ? (
                     <>
-                      <img 
+                      <Image 
                         src={form.image} 
                         alt="Preview" 
+                        width={96}
+                        height={96}
                         className="w-full h-full object-cover rounded-lg"
                       />
                       <button

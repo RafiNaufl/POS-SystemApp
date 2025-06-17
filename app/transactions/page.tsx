@@ -22,6 +22,9 @@ interface Transaction {
   subtotal: number
   tax: number
   total: number
+  voucherDiscount?: number
+  promoDiscount?: number
+  voucherCode?: string
   paymentMethod: 'CASH' | 'CARD' | 'DIGITAL_WALLET'
   status: 'COMPLETED' | 'CANCELLED' | 'PENDING'
   cashier: string
@@ -67,9 +70,14 @@ export default function TransactionsPage() {
         const isValidDate = createdAt instanceof Date && !isNaN(createdAt.getTime())
         const validDate = isValidDate ? createdAt : new Date()
         
+        // Get voucher code from voucher usages
+        const voucherUsage = transaction.voucherUsages && transaction.voucherUsages.length > 0 
+          ? transaction.voucherUsages[0] 
+          : null
+        
         return {
           id: transaction.id,
-          date: validDate.toLocaleDateString('id-ID'),
+          date: validDate.toISOString(),
           time: validDate.toLocaleTimeString('id-ID'),
           items: transaction.items.map((item: any) => ({
             id: item.id,
@@ -81,6 +89,9 @@ export default function TransactionsPage() {
           subtotal: transaction.total,
           tax: transaction.tax,
           total: transaction.finalTotal,
+          voucherDiscount: transaction.voucherDiscount || 0,
+          promoDiscount: transaction.promoDiscount || 0,
+          voucherCode: voucherUsage?.voucher?.code || null,
           paymentMethod: transaction.paymentMethod,
           status: transaction.status,
           cashier: transaction.user.name,
@@ -633,6 +644,24 @@ export default function TransactionsPage() {
                         {formatCurrency(selectedTransaction.tax)}
                       </span>
                     </div>
+                    {selectedTransaction.voucherDiscount && selectedTransaction.voucherDiscount > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-sm text-green-600">
+                          Diskon Voucher {selectedTransaction.voucherCode ? `(${selectedTransaction.voucherCode})` : ''}:
+                        </span>
+                        <span className="text-sm text-green-600">
+                          -{formatCurrency(selectedTransaction.voucherDiscount)}
+                        </span>
+                      </div>
+                    )}
+                    {selectedTransaction.promoDiscount && selectedTransaction.promoDiscount > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-sm text-blue-600">Diskon Promosi:</span>
+                        <span className="text-sm text-blue-600">
+                          -{formatCurrency(selectedTransaction.promoDiscount)}
+                        </span>
+                      </div>
+                    )}
                     <div className="flex justify-between font-medium">
                       <span className="text-base text-gray-900">Total:</span>
                       <span className="text-base text-gray-900">

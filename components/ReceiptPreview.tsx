@@ -15,6 +15,10 @@ interface Transaction {
   status: 'COMPLETED' | 'CANCELLED' | 'PENDING'
   cashier: string
   customer?: string
+  pointsUsed?: number
+  voucherCode?: string
+  voucherDiscount?: number
+  promotionDiscount?: number
 }
 
 interface TransactionItem {
@@ -54,16 +58,14 @@ const getPaymentMethodLabel = (method: string) => {
 }
 
 const formatDate = (dateString: string) => {
-  try {
-    const date = new Date(dateString)
-    return date.toLocaleDateString('id-ID', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    })
-  } catch {
-    return dateString
-  }
+  const date = dateString ? new Date(dateString) : new Date()
+  const isValidDate = date instanceof Date && !isNaN(date.getTime())
+  const validDate = isValidDate ? date : new Date()
+  return validDate.toLocaleDateString('id-ID', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  })
 }
 
 export default function ReceiptPreview({ transaction, isOpen, onClose, onPrint }: ReceiptPreviewProps) {
@@ -199,6 +201,21 @@ export default function ReceiptPreview({ transaction, isOpen, onClose, onPrint }
               <span>Pajak:</span>
               <span>${formatCurrency(transaction.tax)}</span>
             </div>
+            ${(transaction.pointsUsed ?? 0) > 0 ? `
+            <div class="total-line">
+              <span>Diskon Poin (${transaction.pointsUsed} poin):</span>
+              <span>-${formatCurrency((transaction.pointsUsed ?? 0) * 1000)}</span>
+            </div>` : ''}
+            ${transaction.voucherCode && (transaction.voucherDiscount ?? 0) > 0 ? `
+            <div class="total-line">
+              <span>Diskon Voucher (${transaction.voucherCode}):</span>
+              <span>-${formatCurrency(transaction.voucherDiscount ?? 0)}</span>
+            </div>` : ''}
+            ${(transaction.promotionDiscount ?? 0) > 0 ? `
+            <div class="total-line">
+              <span>Diskon Promosi:</span>
+              <span>-${formatCurrency(transaction.promotionDiscount ?? 0)}</span>
+            </div>` : ''}
             <div class="total-line total-final">
               <span>TOTAL:</span>
               <span>${formatCurrency(transaction.total)}</span>
@@ -292,6 +309,24 @@ export default function ReceiptPreview({ transaction, isOpen, onClose, onPrint }
                 <span>Pajak:</span>
                 <span>{formatCurrency(transaction.tax)}</span>
               </div>
+              {(transaction.pointsUsed ?? 0) > 0 && (
+                <div className="flex justify-between text-xs mb-1 text-green-600">
+                  <span>Diskon Poin ({transaction.pointsUsed} poin):</span>
+                  <span>-{formatCurrency((transaction.pointsUsed ?? 0) * 1000)}</span>
+                </div>
+              )}
+              {transaction.voucherCode && (transaction.voucherDiscount ?? 0) > 0 && (
+                <div className="flex justify-between text-xs mb-1 text-purple-600">
+                  <span>Diskon Voucher ({transaction.voucherCode}):</span>
+                  <span>-{formatCurrency(transaction.voucherDiscount ?? 0)}</span>
+                </div>
+              )}
+              {(transaction.promotionDiscount ?? 0) > 0 && (
+                <div className="flex justify-between text-xs mb-1 text-green-600">
+                  <span>Diskon Promosi:</span>
+                  <span>-{formatCurrency(transaction.promotionDiscount ?? 0)}</span>
+                </div>
+              )}
               <div className="flex justify-between font-bold text-sm border-t border-gray-400 pt-2">
                 <span>TOTAL:</span>
                 <span>{formatCurrency(transaction.total)}</span>

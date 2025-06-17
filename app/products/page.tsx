@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import {
   PlusIcon,
   PencilIcon,
@@ -280,6 +281,32 @@ export default function ProductsPage() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="text-2xl font-bold text-blue-600">{products.length}</div>
+            <div className="text-sm text-gray-500">Total Produk</div>
+          </div>
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="text-2xl font-bold text-green-600">
+              {products.filter(p => p.isActive).length}
+            </div>
+            <div className="text-sm text-gray-500">Produk Aktif</div>
+          </div>
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="text-2xl font-bold text-yellow-600">
+              {products.filter(p => p.stock <= 5 && p.stock > 0).length}
+            </div>
+            <div className="text-sm text-gray-500">Stok Menipis</div>
+          </div>
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="text-2xl font-bold text-red-600">
+              {products.filter(p => p.stock === 0).length}
+            </div>
+            <div className="text-sm text-gray-500">Stok Habis</div>
+          </div>
+        </div>
+
         {/* Filters */}
         <div className="bg-white rounded-lg shadow p-6 mb-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -373,9 +400,11 @@ export default function ProductsPage() {
                           <div className="flex items-center">
                             <div className="flex-shrink-0 h-12 w-12">
                               {product.image ? (
-                                <img
+                                <Image
                                   src={product.image}
                                   alt={product.name}
+                                  width={48}
+                                  height={48}
                                   className="h-12 w-12 rounded-lg object-cover"
                                   onError={(e) => {
                                     const target = e.target as HTMLImageElement;
@@ -454,31 +483,7 @@ export default function ProductsPage() {
           )}
         </div>
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-6">
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-2xl font-bold text-blue-600">{products.length}</div>
-            <div className="text-sm text-gray-500">Total Produk</div>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-2xl font-bold text-green-600">
-              {products.filter(p => p.isActive).length}
-            </div>
-            <div className="text-sm text-gray-500">Produk Aktif</div>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-2xl font-bold text-yellow-600">
-              {products.filter(p => p.stock <= 5 && p.stock > 0).length}
-            </div>
-            <div className="text-sm text-gray-500">Stok Menipis</div>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-2xl font-bold text-red-600">
-              {products.filter(p => p.stock === 0).length}
-            </div>
-            <div className="text-sm text-gray-500">Stok Habis</div>
-          </div>
-        </div>
+
       </main>
     </div>
   )

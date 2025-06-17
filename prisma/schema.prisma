@@ -20,6 +20,7 @@ model User {
   updatedAt DateTime @updatedAt
   
   transactions Transaction[]
+  voucherUsages VoucherUsage[]
 }
 
 model Category {
@@ -30,6 +31,7 @@ model Category {
   updatedAt   DateTime  @updatedAt
   
   products Product[]
+  categoryPromotions CategoryPromotion[]
 }
 
 model Product {
@@ -46,6 +48,7 @@ model Product {
   
   category        Category          @relation(fields: [categoryId], references: [id])
   transactionItems TransactionItem[]
+  productPromotions ProductPromotion[]
 }
 
 model Transaction {
@@ -53,6 +56,8 @@ model Transaction {
   total       Float
   tax         Float             @default(0)
   discount    Float             @default(0)
+  voucherDiscount Float         @default(0)
+  promoDiscount Float           @default(0)
   finalTotal  Float
   paymentMethod String          @default("CASH")
   status        String          @default("COMPLETED")
@@ -71,6 +76,7 @@ model Transaction {
   member       Member?           @relation(fields: [memberId], references: [id])
   items        TransactionItem[]
   pointHistory PointHistory[]
+  voucherUsages VoucherUsage[]
 }
 
 model TransactionItem {
@@ -100,6 +106,7 @@ model Member {
   
   transactions Transaction[]
   pointHistory PointHistory[]
+  voucherUsages VoucherUsage[]
 }
 
 model PointHistory {
@@ -113,4 +120,81 @@ model PointHistory {
   
   member      Member       @relation(fields: [memberId], references: [id])
   transaction Transaction? @relation(fields: [transactionId], references: [id])
+}
+
+model Voucher {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  name        String
+  description String?
+  type        String   // PERCENTAGE, FIXED_AMOUNT, FREE_SHIPPING
+  value       Float    // percentage (0-100) or fixed amount
+  minPurchase Float?   // minimum purchase amount to use voucher
+  maxDiscount Float?   // maximum discount amount (for percentage type)
+  usageLimit  Int?     // total usage limit
+  usageCount  Int      @default(0)
+  perUserLimit Int?    // usage limit per user
+  startDate   DateTime
+  endDate     DateTime
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  transactions VoucherUsage[]
+}
+
+model VoucherUsage {
+  id            String   @id @default(cuid())
+  voucherId     String
+  transactionId String
+  userId        String?
+  memberId      String?
+  discountAmount Float
+  createdAt     DateTime @default(now())
+  
+  voucher     Voucher      @relation(fields: [voucherId], references: [id])
+  transaction Transaction  @relation(fields: [transactionId], references: [id])
+  user        User?        @relation(fields: [userId], references: [id])
+  member      Member?      @relation(fields: [memberId], references: [id])
+}
+
+model Promotion {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  type          String   // PRODUCT_DISCOUNT, CATEGORY_DISCOUNT, BULK_DISCOUNT, BUY_X_GET_Y
+  discountValue Float    // percentage (0-100) or fixed amount
+  minQuantity   Int?     // minimum quantity for bulk discount
+  buyQuantity   Int?     // buy X quantity for BUY_X_GET_Y
+  getQuantity   Int?     // get Y quantity for BUY_X_GET_Y
+  startDate     DateTime
+  endDate       DateTime
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  productPromotions ProductPromotion[]
+  categoryPromotions CategoryPromotion[]
+}
+
+model ProductPromotion {
+  id          String @id @default(cuid())
+  promotionId String
+  productId   String
+  
+  promotion Promotion @relation(fields: [promotionId], references: [id])
+  product   Product   @relation(fields: [productId], references: [id])
+  
+  @@unique([promotionId, productId])
+}
+
+model CategoryPromotion {
+  id          String @id @default(cuid())
+  promotionId String
+  categoryId  String
+  
+  promotion Promotion @relation(fields: [promotionId], references: [id])
+  category  Category  @relation(fields: [categoryId], references: [id])
+  
+  @@unique([promotionId, categoryId])
 }

@@ -12,6 +12,9 @@ import {
   ClipboardDocumentListIcon,
   BanknotesIcon,
   TagIcon,
+  UserGroupIcon,
+  TicketIcon,
+  ReceiptPercentIcon,
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
 
@@ -118,6 +121,30 @@ export default function DashboardPage() {
       icon: UsersIcon,
       href: '/users',
       color: 'bg-indigo-500',
+      roles: ['ADMIN']
+    },
+    {
+      title: 'Member',
+      description: 'Kelola data member',
+      icon: UserGroupIcon,
+      href: '/members',
+      color: 'bg-teal-500',
+      roles: ['ADMIN']
+    },
+    {
+      title: 'Voucher',
+      description: 'Kelola voucher dan kupon',
+      icon: TicketIcon,
+      href: '/vouchers',
+      color: 'bg-orange-500',
+      roles: ['ADMIN']
+    },
+    {
+      title: 'Promosi',
+      description: 'Kelola diskon dan promosi',
+      icon: ReceiptPercentIcon,
+      href: '/promotions',
+      color: 'bg-pink-500',
       roles: ['ADMIN']
     },
   ]
