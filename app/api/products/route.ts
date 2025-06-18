@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 
 export async function GET(request: NextRequest) {
-  const prisma = new PrismaClient()
   
   try {
     const { searchParams } = new URL(request.url)
@@ -33,7 +32,6 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const prisma = new PrismaClient()
   
   try {
     const body = await request.json()
@@ -66,7 +64,6 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
-  const prisma = new PrismaClient()
   
   try {
     const body = await request.json()
@@ -99,7 +96,6 @@ export async function PUT(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  const prisma = new PrismaClient()
   
   try {
     const { searchParams } = new URL(request.url)

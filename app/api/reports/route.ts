@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { getServerSession } from 'next-auth/next'
+import { authOptions } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
+import { Prisma } from '@prisma/client'
 
 export async function GET(request: NextRequest) {
-  const prisma = new PrismaClient()
+  const session = await getServerSession(authOptions)
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
   
   try {
     const { searchParams } = new URL(request.url)
@@ -56,9 +62,9 @@ export async function GET(request: NextRequest) {
     })
 
     // Process sales data by date
-    const salesByDate = new Map()
+    const salesByDate = new Map<string, { sales: number; transactions: number }>()
     
-    transactions.forEach(transaction => {
+    transactions.forEach((transaction: any) => {
       const dateKey = transaction.createdAt.toISOString().split('T')[0]
       const existing = salesByDate.get(dateKey) || { sales: 0, transactions: 0 }
       salesByDate.set(dateKey, {
@@ -74,12 +80,12 @@ export async function GET(request: NextRequest) {
     }))
 
     // Process category data
-    const categoryStats = new Map()
+    const categoryStats = new Map<string, { value: number; revenue: number }>()
     const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#F97316']
     let colorIndex = 0
 
-    transactions.forEach(transaction => {
-      transaction.items.forEach(item => {
+    transactions.forEach((transaction: any) => {
+      transaction.items.forEach((item: any) => {
         if (item.product?.category) {
           const categoryName = item.product.category.name
           const existing = categoryStats.get(categoryName) || { value: 0, revenue: 0 }
@@ -92,19 +98,19 @@ export async function GET(request: NextRequest) {
     })
 
     const totalCategoryQuantity = Array.from(categoryStats.values())
-      .reduce((sum, cat) => sum + cat.value, 0)
+      .reduce((sum: number, cat) => sum + cat.value, 0)
 
-    const categoryData = Array.from(categoryStats.entries()).map(([name, stats]) => ({
+    const categoryData = Array.from(categoryStats.entries()).map(([name, stats]: [string, { value: number; revenue: number }]) => ({
       name,
       value: totalCategoryQuantity > 0 ? Math.round((stats.value / totalCategoryQuantity) * 100) : 0,
       color: colors[colorIndex++ % colors.length]
     }))
 
     // Process top products
-    const productStats = new Map()
+    const productStats = new Map<string, { quantity: number; revenue: number }>()
     
-    transactions.forEach(transaction => {
-      transaction.items.forEach(item => {
+    transactions.forEach((transaction: any) => {
+      transaction.items.forEach((item: any) => {
         if (item.product) {
           const productName = item.product.name
           const existing = productStats.get(productName) || { quantity: 0, revenue: 0 }
@@ -117,7 +123,7 @@ export async function GET(request: NextRequest) {
     })
 
     const topProducts = Array.from(productStats.entries())
-      .map(([name, stats]) => ({
+      .map(([name, stats]: [string, { quantity: number; revenue: number }]) => ({
         name,
         quantity: stats.quantity,
         revenue: stats.revenue
@@ -126,7 +132,7 @@ export async function GET(request: NextRequest) {
       .slice(0, 5)
 
     // Calculate summary
-    const totalSales = transactions.reduce((sum, t) => sum + t.total, 0)
+    const totalSales = transactions.reduce((sum: number, t: any) => sum + t.total, 0)
     const totalTransactions = transactions.length
     const averageTransaction = totalTransactions > 0 ? totalSales / totalTransactions : 0
     
@@ -147,7 +153,7 @@ export async function GET(request: NextRequest) {
       }
     })
     
-    const previousSales = previousTransactions.reduce((sum, t) => sum + t.total, 0)
+    const previousSales = previousTransactions.reduce((sum: number, t: any) => sum + t.total, 0)
     const growth = previousSales > 0 ? ((totalSales - previousSales) / previousSales) * 100 : 0
 
     const summary = {
@@ -171,7 +177,5 @@ export async function GET(request: NextRequest) {
       { error: 'Failed to fetch report data' },
       { status: 500 }
     )
-  } finally {
-    await prisma.$disconnect()
   }
 }
