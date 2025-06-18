@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeftIcon, MagnifyingGlassIcon, PlusIcon, PencilIcon, TrashIcon, Squares2X2Icon, TableCellsIcon, FunnelIcon, ChartBarIcon } from '@heroicons/react/24/outline'
 
@@ -107,7 +107,7 @@ export default function MembersPage() {
       }
     })
 
-  const fetchMembers = async () => {
+  const fetchMembers = useCallback(async () => {
     try {
       setLoading(true)
       const params = new URLSearchParams({
@@ -130,11 +130,11 @@ export default function MembersPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [currentPage, searchTerm])
 
   useEffect(() => {
     fetchMembers()
-  }, [currentPage, searchTerm])
+  }, [fetchMembers])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()

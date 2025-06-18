@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 
 export async function GET(request: NextRequest) {
-  const prisma = new PrismaClient()
   
   try {
     const categories = await prisma.category.findMany({
@@ -25,13 +24,10 @@ export async function GET(request: NextRequest) {
       { error: 'Failed to fetch categories' },
       { status: 500 }
     )
-  } finally {
-    await prisma.$disconnect()
   }
 }
 
 export async function POST(request: NextRequest) {
-  const prisma = new PrismaClient()
   
   try {
     const body = await request.json()
@@ -46,18 +42,15 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(category, { status: 201 })
   } catch (error) {
-    console.error('Error creating category:', error)
-    return NextResponse.json(
-      { error: 'Failed to create category' },
-      { status: 500 }
-    )
-  } finally {
-    await prisma.$disconnect()
+      console.error('Error creating category:', error)
+      return NextResponse.json(
+        { error: 'Failed to create category' },
+        { status: 500 }
+      )
+    }
   }
-}
 
 export async function PUT(request: NextRequest) {
-  const prisma = new PrismaClient()
   
   try {
     const body = await request.json()
@@ -73,18 +66,15 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json(category)
   } catch (error) {
-    console.error('Error updating category:', error)
-    return NextResponse.json(
-      { error: 'Failed to update category' },
-      { status: 500 }
-    )
-  } finally {
-    await prisma.$disconnect()
+      console.error('Error updating category:', error)
+      return NextResponse.json(
+        { error: 'Failed to update category' },
+        { status: 500 }
+      )
+    }
   }
-}
 
 export async function DELETE(request: NextRequest) {
-  const prisma = new PrismaClient()
   
   try {
     const { searchParams } = new URL(request.url)
@@ -115,12 +105,10 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ message: 'Category deleted successfully' })
   } catch (error) {
-    console.error('Error deleting category:', error)
-    return NextResponse.json(
-      { error: 'Failed to delete category' },
-      { status: 500 }
-    )
-  } finally {
-    await prisma.$disconnect()
+      console.error('Error deleting category:', error)
+      return NextResponse.json(
+        { error: 'Failed to delete category' },
+        { status: 500 }
+      )
+    }
   }
-}

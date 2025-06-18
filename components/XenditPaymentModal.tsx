@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { XCircleIcon, QrCodeIcon, DevicePhoneMobileIcon, GlobeAltIcon } from '@heroicons/react/24/outline'
 import Image from 'next/image'
 
@@ -104,6 +104,32 @@ export default function XenditPaymentModal({
     return () => clearInterval(interval)
   }, [paymentCharge, countdown, paymentStatus])
 
+  const checkPaymentStatus = useCallback(async () => {
+    if (!paymentCharge || isCheckingStatus) return
+
+    setIsCheckingStatus(true)
+
+    try {
+      const response = await fetch(`/api/payments/xendit?charge_id=${paymentCharge.charge_id}`)
+      const data = await response.json()
+
+      if (response.ok) {
+        setPaymentStatus(data.status)
+        
+        if (data.status === 'SUCCEEDED') {
+          onSuccess({ id: transactionId, total: amount, pointsEarned: 0 })
+        } else if (data.status === 'FAILED') {
+          setError('Pembayaran gagal. Silakan coba lagi.')
+          onError('Payment failed')
+        }
+      }
+    } catch (error) {
+      console.error('Status check error:', error)
+    } finally {
+      setIsCheckingStatus(false)
+    }
+  }, [paymentCharge, isCheckingStatus, transactionId, amount, onSuccess, onError])
+
   // Check payment status periodically
   useEffect(() => {
     let interval: NodeJS.Timeout
@@ -113,7 +139,7 @@ export default function XenditPaymentModal({
       }, 3000) // Check every 3 seconds
     }
     return () => clearInterval(interval)
-  }, [paymentCharge, paymentStatus, countdown])
+  }, [paymentCharge, paymentStatus, countdown, checkPaymentStatus])
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', {
@@ -201,32 +227,6 @@ export default function XenditPaymentModal({
       setError(error.message || 'Gagal membuat pembayaran')
     } finally {
       setIsCreatingPayment(false)
-    }
-  }
-
-  const checkPaymentStatus = async () => {
-    if (!paymentCharge || isCheckingStatus) return
-
-    setIsCheckingStatus(true)
-
-    try {
-      const response = await fetch(`/api/payments/xendit?charge_id=${paymentCharge.charge_id}`)
-      const data = await response.json()
-
-      if (response.ok) {
-        setPaymentStatus(data.status)
-        
-        if (data.status === 'SUCCEEDED') {
-          onSuccess({ id: transactionId, total: amount, pointsEarned: 0 })
-        } else if (data.status === 'FAILED') {
-          setError('Pembayaran gagal. Silakan coba lagi.')
-          onError('Payment failed')
-        }
-      }
-    } catch (error) {
-      console.error('Status check error:', error)
-    } finally {
-      setIsCheckingStatus(false)
     }
   }
 

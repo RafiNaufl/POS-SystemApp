@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
@@ -429,7 +429,7 @@ export default function CashierPage() {
     toast.success('Voucher dihapus')
   }
 
-  const calculatePromotions = async () => {
+  const calculatePromotions = useCallback(async () => {
     if (cart.length === 0) return
 
     try {
@@ -456,12 +456,12 @@ export default function CashierPage() {
     } catch (error) {
       console.error('Error calculating promotions:', error)
     }
-  }
+  }, [cart])
 
   // Recalculate promotions when cart changes
   useEffect(() => {
     calculatePromotions()
-  }, [cart])
+  }, [calculatePromotions])
 
   const calculateTotal = () => {
     const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0)

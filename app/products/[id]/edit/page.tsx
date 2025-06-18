@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter, useParams } from 'next/navigation'
@@ -56,7 +56,7 @@ export default function EditProductPage() {
   const [errors, setErrors] = useState<Partial<ProductForm>>({})
 
   // Sample products data - in real app, this would come from API
-  const sampleProducts: Product[] = [
+  const sampleProducts: Product[] = useMemo(() => [
     {
       id: '1',
       name: 'Nasi Goreng Spesial',
@@ -112,7 +112,7 @@ export default function EditProductPage() {
       isActive: true,
       createdAt: '2024-01-15',
     },
-  ]
+  ], [])
 
   // Load categories and product data
   useEffect(() => {

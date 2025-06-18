@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeftIcon } from '@heroicons/react/24/outline'
@@ -63,22 +63,7 @@ export default function PromotionsPage() {
     categoryIds: [] as string[]
   })
 
-  useEffect(() => {
-    if (status === 'loading') return
-    if (!session) {
-      router.push('/login')
-      return
-    }
-    if (session.user.role !== 'ADMIN') {
-      router.push('/dashboard')
-      return
-    }
-    fetchPromotions()
-    fetchProducts()
-    fetchCategories()
-  }, [session, status, router])
-
-  const fetchPromotions = async () => {
+  const fetchPromotions = useCallback(async () => {
     try {
       const params = new URLSearchParams()
       if (filterActive !== 'all') params.append('active', filterActive)
@@ -94,7 +79,22 @@ export default function PromotionsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [filterActive, filterType])
+
+  useEffect(() => {
+    if (status === 'loading') return
+    if (!session) {
+      router.push('/login')
+      return
+    }
+    if (session.user.role !== 'ADMIN') {
+      router.push('/dashboard')
+      return
+    }
+    fetchPromotions()
+    fetchProducts()
+    fetchCategories()
+  }, [session, status, router, fetchPromotions])
 
   const fetchProducts = async () => {
     try {

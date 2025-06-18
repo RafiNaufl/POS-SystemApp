@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeftIcon } from '@heroicons/react/24/outline'
@@ -46,20 +46,7 @@ export default function VouchersPage() {
     endDate: ''
   })
 
-  useEffect(() => {
-    if (status === 'loading') return
-    if (!session) {
-      router.push('/login')
-      return
-    }
-    if (session.user.role !== 'ADMIN') {
-      router.push('/dashboard')
-      return
-    }
-    fetchVouchers()
-  }, [session, status, router])
-
-  const fetchVouchers = async () => {
+  const fetchVouchers = useCallback(async () => {
     try {
       const params = new URLSearchParams()
       if (searchCode) params.append('code', searchCode)
@@ -75,7 +62,20 @@ export default function VouchersPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [searchCode, filterActive])
+
+  useEffect(() => {
+    if (status === 'loading') return
+    if (!session) {
+      router.push('/login')
+      return
+    }
+    if (session.user.role !== 'ADMIN') {
+      router.push('/dashboard')
+      return
+    }
+    fetchVouchers()
+  }, [session, status, router, fetchVouchers])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
