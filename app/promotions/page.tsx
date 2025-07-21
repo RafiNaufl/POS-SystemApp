@@ -45,6 +45,7 @@ export default function PromotionsPage() {
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  const [editingPromotion, setEditingPromotion] = useState<Promotion | null>(null)
   const [filterActive, setFilterActive] = useState<string>('all')
   const [filterType, setFilterType] = useState<string>('all')
 
@@ -60,7 +61,8 @@ export default function PromotionsPage() {
     startDate: '',
     endDate: '',
     productIds: [] as string[],
-    categoryIds: [] as string[]
+    categoryIds: [] as string[],
+    isActive: true
   })
 
   const fetchPromotions = useCallback(async () => {
@@ -123,8 +125,11 @@ export default function PromotionsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      const response = await fetch('/api/promotions', {
-        method: 'POST',
+      const url = editingPromotion ? `/api/promotions/${editingPromotion.id}` : '/api/promotions'
+      const method = editingPromotion ? 'PUT' : 'POST'
+      
+      const response = await fetch(url, {
+        method,
         headers: {
           'Content-Type': 'application/json'
         },
@@ -141,15 +146,16 @@ export default function PromotionsPage() {
 
       if (response.ok) {
         setShowForm(false)
+        setEditingPromotion(null)
         resetForm()
         fetchPromotions()
       } else {
         const error = await response.json()
-        alert(error.error || 'Error creating promotion')
+        alert(error.error || `Error ${editingPromotion ? 'updating' : 'creating'} promotion`)
       }
     } catch (error) {
-      console.error('Error creating promotion:', error)
-      alert('Error creating promotion')
+      console.error(`Error ${editingPromotion ? 'updating' : 'creating'} promotion:`, error)
+      alert(`Error ${editingPromotion ? 'updating' : 'creating'} promotion`)
     }
   }
 
@@ -166,8 +172,57 @@ export default function PromotionsPage() {
       startDate: '',
       endDate: '',
       productIds: [],
-      categoryIds: []
+      categoryIds: [],
+      isActive: true
     })
+  }
+
+  const handleEdit = (promotion: Promotion) => {
+    setEditingPromotion(promotion)
+    setFormData({
+      name: promotion.name,
+      description: promotion.description || '',
+      type: promotion.type,
+      discountValue: promotion.discountType === 'PERCENTAGE' ? promotion.discountValue : promotion.discountValue,
+      discountType: promotion.discountType,
+      minQuantity: promotion.minQuantity || undefined,
+      buyQuantity: promotion.buyQuantity || undefined,
+      getQuantity: promotion.getQuantity || undefined,
+      startDate: new Date(promotion.startDate).toISOString().slice(0, 16),
+      endDate: new Date(promotion.endDate).toISOString().slice(0, 16),
+      productIds: promotion.productPromotions.map(pp => pp.product.id),
+      categoryIds: promotion.categoryPromotions.map(cp => cp.category.id),
+      isActive: promotion.isActive
+    })
+    setShowForm(true)
+  }
+
+  const handleCloseForm = () => {
+    setShowForm(false)
+    setEditingPromotion(null)
+    resetForm()
+  }
+
+  const handleDelete = async (promotion: Promotion) => {
+    if (!confirm(`Apakah Anda yakin ingin menghapus promosi "${promotion.name}"?`)) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/promotions/${promotion.id}`, {
+        method: 'DELETE'
+      })
+
+      if (response.ok) {
+        fetchPromotions()
+      } else {
+        const error = await response.json()
+        alert(error.error || 'Error deleting promotion')
+      }
+    } catch (error) {
+      console.error('Error deleting promotion:', error)
+      alert('Error deleting promotion')
+    }
   }
 
   const formatCurrency = (amount: number) => {
@@ -288,6 +343,9 @@ export default function PromotionsPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
                 </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Aksi
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -348,6 +406,24 @@ export default function PromotionsPage() {
                          isNotStarted ? 'Belum Dimulai' :
                          'Aktif'}
                       </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => handleEdit(promotion)}
+                          className="text-blue-600 hover:text-blue-800"
+                          title="Edit Promosi"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDelete(promotion)}
+                          className="text-red-600 hover:text-red-800"
+                          title="Hapus Promosi"
+                        >
+                          Hapus
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 )

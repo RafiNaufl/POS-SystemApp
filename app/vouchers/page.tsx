@@ -29,6 +29,7 @@ export default function VouchersPage() {
   const [vouchers, setVouchers] = useState<Voucher[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  const [editingVoucher, setEditingVoucher] = useState<Voucher | null>(null)
   const [searchCode, setSearchCode] = useState('')
   const [filterActive, setFilterActive] = useState<string>('all')
 
@@ -43,7 +44,8 @@ export default function VouchersPage() {
     usageLimit: '',
     perUserLimit: '',
     startDate: '',
-    endDate: ''
+    endDate: '',
+    isActive: true
   })
 
   const fetchVouchers = useCallback(async () => {
@@ -80,8 +82,11 @@ export default function VouchersPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      const response = await fetch('/api/vouchers', {
-        method: 'POST',
+      const url = editingVoucher ? `/api/vouchers/${editingVoucher.id}` : '/api/vouchers'
+      const method = editingVoucher ? 'PUT' : 'POST'
+      
+      const response = await fetch(url, {
+        method,
         headers: {
           'Content-Type': 'application/json'
         },
@@ -97,28 +102,83 @@ export default function VouchersPage() {
 
       if (response.ok) {
         setShowForm(false)
-        setFormData({
-          code: '',
-          name: '',
-          description: '',
-          type: 'PERCENTAGE',
-          value: 0,
-          minPurchase: '',
-          maxDiscount: '',
-          usageLimit: '',
-          perUserLimit: '',
-          startDate: '',
-          endDate: ''
-        })
+        setEditingVoucher(null)
+        resetForm()
         fetchVouchers()
       } else {
         const error = await response.json()
-        alert(error.error || 'Error creating voucher')
+        alert(error.error || `Error ${editingVoucher ? 'updating' : 'creating'} voucher`)
       }
     } catch (error) {
-      console.error('Error creating voucher:', error)
-      alert('Error creating voucher')
+      console.error(`Error ${editingVoucher ? 'updating' : 'creating'} voucher:`, error)
+      alert(`Error ${editingVoucher ? 'updating' : 'creating'} voucher`)
     }
+  }
+
+  const resetForm = () => {
+    setFormData({
+      code: '',
+      name: '',
+      description: '',
+      type: 'PERCENTAGE',
+      value: 0,
+      minPurchase: '',
+      maxDiscount: '',
+      usageLimit: '',
+      perUserLimit: '',
+      startDate: '',
+      endDate: '',
+      isActive: true
+    })
+  }
+
+
+
+  const handleEdit = (voucher: Voucher) => {
+    setEditingVoucher(voucher)
+    setFormData({
+      code: voucher.code,
+      name: voucher.name,
+      description: voucher.description || '',
+      type: voucher.type,
+      value: voucher.value,
+      minPurchase: voucher.minPurchase?.toString() || '',
+      maxDiscount: voucher.maxDiscount?.toString() || '',
+      usageLimit: voucher.usageLimit?.toString() || '',
+      perUserLimit: voucher.perUserLimit?.toString() || '',
+      startDate: new Date(voucher.startDate).toISOString().slice(0, 16),
+      endDate: new Date(voucher.endDate).toISOString().slice(0, 16),
+      isActive: voucher.isActive
+    })
+    setShowForm(true)
+  }
+
+  const handleDelete = async (voucher: Voucher) => {
+    if (!confirm(`Apakah Anda yakin ingin menghapus voucher "${voucher.name}"?`)) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/vouchers/${voucher.id}`, {
+        method: 'DELETE'
+      })
+
+      if (response.ok) {
+        fetchVouchers()
+      } else {
+        const error = await response.json()
+        alert(error.error || 'Error deleting voucher')
+      }
+    } catch (error) {
+      console.error('Error deleting voucher:', error)
+      alert('Error deleting voucher')
+    }
+  }
+
+  const handleCloseForm = () => {
+    setShowForm(false)
+    setEditingVoucher(null)
+    resetForm()
   }
 
   const formatCurrency = (amount: number) => {
@@ -228,6 +288,9 @@ export default function VouchersPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
                 </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Aksi
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -288,6 +351,24 @@ export default function VouchersPage() {
                          'Aktif'}
                       </span>
                     </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => handleEdit(voucher)}
+                            className="text-blue-600 hover:text-blue-800"
+                            title="Edit Voucher"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDelete(voucher)}
+                            className="text-red-600 hover:text-red-800"
+                            title="Hapus Voucher"
+                          >
+                            Hapus
+                          </button>
+                        </div>
+                      </td>
                   </tr>
                 )
               })}
@@ -301,9 +382,11 @@ export default function VouchersPage() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-gray-800">Tambah Voucher Baru</h2>
+              <h2 className="text-xl font-bold text-gray-800">
+                {editingVoucher ? 'Edit Voucher' : 'Tambah Voucher Baru'}
+              </h2>
               <button
-                onClick={() => setShowForm(false)}
+                onClick={handleCloseForm}
                 className="text-gray-500 hover:text-gray-700"
               >
                 ✕
@@ -471,10 +554,40 @@ export default function VouchersPage() {
                 </div>
               </div>
 
+              {editingVoucher && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Status
+                  </label>
+                  <div className="flex items-center space-x-4">
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        name="isActive"
+                        checked={formData.isActive === true}
+                        onChange={() => setFormData({ ...formData, isActive: true })}
+                        className="mr-2"
+                      />
+                      Aktif
+                    </label>
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        name="isActive"
+                        checked={formData.isActive === false}
+                        onChange={() => setFormData({ ...formData, isActive: false })}
+                        className="mr-2"
+                      />
+                      Tidak Aktif
+                    </label>
+                  </div>
+                </div>
+              )}
+
               <div className="flex justify-end space-x-4 pt-4">
                 <button
                   type="button"
-                  onClick={() => setShowForm(false)}
+                  onClick={handleCloseForm}
                   className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                 >
                   Batal
@@ -483,7 +596,7 @@ export default function VouchersPage() {
                   type="submit"
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 >
-                  Simpan Voucher
+                  {editingVoucher ? 'Update Voucher' : 'Simpan Voucher'}
                 </button>
               </div>
             </form>

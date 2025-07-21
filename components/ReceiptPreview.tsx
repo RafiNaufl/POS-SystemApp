@@ -1,7 +1,8 @@
 'use client'
 
-import React from 'react'
+import React, { useState } from 'react'
 import { PrinterIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import ThermalPrinter from './ThermalPrinter'
 
 interface Transaction {
   id: string
@@ -69,187 +70,202 @@ const formatDate = (dateString: string) => {
 }
 
 export default function ReceiptPreview({ transaction, isOpen, onClose, onPrint }: ReceiptPreviewProps) {
+  const [receiptHTML, setReceiptHTML] = useState('')
+  const [showThermalPrinter, setShowThermalPrinter] = useState(false)
+  
   if (!isOpen) return null
+
+  const generateReceiptHTML = () => {
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Struk - ${transaction.id}</title>
+        <style>
+          @media print {
+            @page {
+              size: 80mm auto;
+              margin: 0;
+            }
+            body {
+              margin: 0;
+              padding: 5mm;
+            }
+          }
+          body {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.2;
+            max-width: 80mm;
+            margin: 0 auto;
+            padding: 10px;
+            background: white;
+          }
+          .header {
+            text-align: center;
+            border-bottom: 1px dashed #000;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+          }
+          .store-name {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 5px;
+          }
+          .store-info {
+            font-size: 10px;
+            margin-bottom: 2px;
+          }
+          .transaction-info {
+            margin-bottom: 10px;
+            font-size: 11px;
+          }
+          .items {
+            border-bottom: 1px dashed #000;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+          }
+          .item {
+            margin-bottom: 5px;
+          }
+          .item-name {
+            font-weight: bold;
+          }
+          .item-details {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+          }
+          .totals {
+            border-bottom: 1px dashed #000;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+          }
+          .total-line {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 3px;
+          }
+          .total-final {
+            font-weight: bold;
+            font-size: 14px;
+            border-top: 1px solid #000;
+            padding-top: 5px;
+          }
+          .payment-info {
+            margin-bottom: 10px;
+          }
+          .footer {
+            text-align: center;
+            font-size: 10px;
+            margin-top: 10px;
+          }
+          .dashed-line {
+            border-bottom: 1px dashed #000;
+            margin: 10px 0;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="store-name">TOKO SERBAGUNA</div>
+          <div class="store-info">Jl. Contoh No. 123</div>
+          <div class="store-info">Telp: (021) 1234-5678</div>
+          <div class="store-info">Email: info@tokoserbaguna.com</div>
+        </div>
+        
+        <div class="transaction-info">
+          <div>No. Transaksi: ${transaction.id}</div>
+          <div>Tanggal: ${formatDate(transaction.date)}</div>
+          <div>Waktu: ${transaction.time}</div>
+          <div>Kasir: ${transaction.cashier}</div>
+          ${transaction.customer ? `<div>Pelanggan: ${transaction.customer}</div>` : ''}
+        </div>
+        
+        <div class="items">
+          ${transaction.items.map(item => `
+            <div class="item">
+              <div class="item-name">${item.name}</div>
+              <div class="item-details">
+                <span>${item.quantity} x ${formatCurrency(item.price)}</span>
+                <span>${formatCurrency(item.total)}</span>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+        
+        <div class="totals">
+          <div class="total-line">
+            <span>Subtotal:</span>
+            <span>${formatCurrency(transaction.subtotal)}</span>
+          </div>
+          <div class="total-line">
+            <span>Pajak:</span>
+            <span>${formatCurrency(transaction.tax)}</span>
+          </div>
+          ${(transaction.pointsUsed ?? 0) > 0 ? `
+          <div class="total-line">
+            <span>Diskon Poin (${transaction.pointsUsed} poin):</span>
+            <span>-${formatCurrency((transaction.pointsUsed ?? 0) * 1000)}</span>
+          </div>` : ''}
+          ${transaction.voucherCode && (transaction.voucherDiscount ?? 0) > 0 ? `
+          <div class="total-line">
+            <span>Diskon Voucher (${transaction.voucherCode}):</span>
+            <span>-${formatCurrency(transaction.voucherDiscount ?? 0)}</span>
+          </div>` : ''}
+          ${(transaction.promotionDiscount ?? 0) > 0 ? `
+          <div class="total-line">
+            <span>Diskon Promosi:</span>
+            <span>-${formatCurrency(transaction.promotionDiscount ?? 0)}</span>
+          </div>` : ''}
+          <div class="total-line total-final">
+            <span>TOTAL:</span>
+            <span>${formatCurrency(transaction.total)}</span>
+          </div>
+        </div>
+        
+        <div class="payment-info">
+          <div class="total-line">
+            <span>Pembayaran:</span>
+            <span>${getPaymentMethodLabel(transaction.paymentMethod)}</span>
+          </div>
+          <div class="total-line">
+            <span>Status:</span>
+            <span>${transaction.status}</span>
+          </div>
+        </div>
+        
+        <div class="footer">
+          <div>Terima kasih atas kunjungan Anda!</div>
+          <div>Barang yang sudah dibeli tidak dapat dikembalikan</div>
+          <div class="dashed-line"></div>
+          <div>Dicetak pada: ${new Date().toLocaleString('id-ID')}</div>
+        </div>
+      </body>
+      </html>
+    `
+  }
 
   const handlePrint = () => {
     const printWindow = window.open('', '_blank')
-    if (printWindow) {
-      const receiptHTML = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>Struk - ${transaction.id}</title>
-          <style>
-            @media print {
-              @page {
-                size: 80mm auto;
-                margin: 0;
-              }
-              body {
-                margin: 0;
-                padding: 5mm;
-              }
-            }
-            body {
-              font-family: 'Courier New', monospace;
-              font-size: 12px;
-              line-height: 1.2;
-              max-width: 80mm;
-              margin: 0 auto;
-              padding: 10px;
-              background: white;
-            }
-            .header {
-              text-align: center;
-              border-bottom: 1px dashed #000;
-              padding-bottom: 10px;
-              margin-bottom: 10px;
-            }
-            .store-name {
-              font-size: 16px;
-              font-weight: bold;
-              margin-bottom: 5px;
-            }
-            .store-info {
-              font-size: 10px;
-              margin-bottom: 2px;
-            }
-            .transaction-info {
-              margin-bottom: 10px;
-              font-size: 11px;
-            }
-            .items {
-              border-bottom: 1px dashed #000;
-              padding-bottom: 10px;
-              margin-bottom: 10px;
-            }
-            .item {
-              margin-bottom: 5px;
-            }
-            .item-name {
-              font-weight: bold;
-            }
-            .item-details {
-              display: flex;
-              justify-content: space-between;
-              font-size: 11px;
-            }
-            .totals {
-              border-bottom: 1px dashed #000;
-              padding-bottom: 10px;
-              margin-bottom: 10px;
-            }
-            .total-line {
-              display: flex;
-              justify-content: space-between;
-              margin-bottom: 3px;
-            }
-            .total-final {
-              font-weight: bold;
-              font-size: 14px;
-              border-top: 1px solid #000;
-              padding-top: 5px;
-            }
-            .payment-info {
-              margin-bottom: 10px;
-            }
-            .footer {
-              text-align: center;
-              font-size: 10px;
-              margin-top: 10px;
-            }
-            .dashed-line {
-              border-bottom: 1px dashed #000;
-              margin: 10px 0;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <div class="store-name">TOKO SERBAGUNA</div>
-            <div class="store-info">Jl. Contoh No. 123</div>
-            <div class="store-info">Telp: (021) 1234-5678</div>
-            <div class="store-info">Email: info@tokoserbaguna.com</div>
-          </div>
-          
-          <div class="transaction-info">
-            <div>No. Transaksi: ${transaction.id}</div>
-            <div>Tanggal: ${formatDate(transaction.date)}</div>
-            <div>Waktu: ${transaction.time}</div>
-            <div>Kasir: ${transaction.cashier}</div>
-            ${transaction.customer ? `<div>Pelanggan: ${transaction.customer}</div>` : ''}
-          </div>
-          
-          <div class="items">
-            ${transaction.items.map(item => `
-              <div class="item">
-                <div class="item-name">${item.name}</div>
-                <div class="item-details">
-                  <span>${item.quantity} x ${formatCurrency(item.price)}</span>
-                  <span>${formatCurrency(item.total)}</span>
-                </div>
-              </div>
-            `).join('')}
-          </div>
-          
-          <div class="totals">
-            <div class="total-line">
-              <span>Subtotal:</span>
-              <span>${formatCurrency(transaction.subtotal)}</span>
-            </div>
-            <div class="total-line">
-              <span>Pajak:</span>
-              <span>${formatCurrency(transaction.tax)}</span>
-            </div>
-            ${(transaction.pointsUsed ?? 0) > 0 ? `
-            <div class="total-line">
-              <span>Diskon Poin (${transaction.pointsUsed} poin):</span>
-              <span>-${formatCurrency((transaction.pointsUsed ?? 0) * 1000)}</span>
-            </div>` : ''}
-            ${transaction.voucherCode && (transaction.voucherDiscount ?? 0) > 0 ? `
-            <div class="total-line">
-              <span>Diskon Voucher (${transaction.voucherCode}):</span>
-              <span>-${formatCurrency(transaction.voucherDiscount ?? 0)}</span>
-            </div>` : ''}
-            ${(transaction.promotionDiscount ?? 0) > 0 ? `
-            <div class="total-line">
-              <span>Diskon Promosi:</span>
-              <span>-${formatCurrency(transaction.promotionDiscount ?? 0)}</span>
-            </div>` : ''}
-            <div class="total-line total-final">
-              <span>TOTAL:</span>
-              <span>${formatCurrency(transaction.total)}</span>
-            </div>
-          </div>
-          
-          <div class="payment-info">
-            <div class="total-line">
-              <span>Pembayaran:</span>
-              <span>${getPaymentMethodLabel(transaction.paymentMethod)}</span>
-            </div>
-            <div class="total-line">
-              <span>Status:</span>
-              <span>${transaction.status}</span>
-            </div>
-          </div>
-          
-          <div class="footer">
-            <div>Terima kasih atas kunjungan Anda!</div>
-            <div>Barang yang sudah dibeli tidak dapat dikembalikan</div>
-            <div class="dashed-line"></div>
-            <div>Dicetak pada: ${new Date().toLocaleString('id-ID')}</div>
-          </div>
-        </body>
-        </html>
-      `
-      
-      printWindow.document.write(receiptHTML)
-      printWindow.document.close()
-      printWindow.focus()
-      printWindow.print()
-      printWindow.close()
+    if (!printWindow) {
+      alert('Popup diblokir! Mohon izinkan popup untuk mencetak struk.')
+      return
     }
-    onPrint()
+      
+    const html = generateReceiptHTML()
+    printWindow.document.write(html)
+    printWindow.document.close()
+    printWindow.focus()
+      
+    // Automatically print when the window loads
+    printWindow.onload = () => {
+      printWindow.print()
+      printWindow.onafterprint = () => {
+        printWindow.close()
+        if (onPrint) onPrint()
+      }
+    }
   }
 
   return (
@@ -356,20 +372,50 @@ export default function ReceiptPreview({ transaction, isOpen, onClose, onPrint }
         </div>
 
         {/* Actions */}
-        <div className="flex justify-end space-x-3 p-4 border-t bg-gray-50">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-lg font-medium transition-colors"
-          >
-            Batal
-          </button>
-          <button
-            onClick={handlePrint}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors flex items-center"
-          >
-            <PrinterIcon className="h-5 w-5 mr-2" />
-            Cetak Struk
-          </button>
+        <div className="p-4 border-t bg-gray-50">
+          <div className="flex justify-end space-x-3 mb-3">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-lg font-medium transition-colors"
+            >
+              Batal
+            </button>
+            <button
+              onClick={handlePrint}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors flex items-center"
+            >
+              <PrinterIcon className="h-5 w-5 mr-2" />
+              Cetak Struk (Browser)
+            </button>
+          </div>
+          
+          <div className="mt-2">
+            <button
+              onClick={() => {
+                setReceiptHTML(generateReceiptHTML())
+                setShowThermalPrinter(true)
+                // Tombol ini sekarang hanya menampilkan komponen ThermalPrinter
+                // Komponen ThermalPrinter akan otomatis mencoba terhubung dan mencetak
+              }}
+              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center w-full"
+            >
+              <PrinterIcon className="h-5 w-5 mr-2" />
+              Cetak ke Printer Thermal
+            </button>
+          </div>
+          
+          {showThermalPrinter && receiptHTML && (
+            <ThermalPrinter 
+              receiptHTML={receiptHTML} 
+              onPrintSuccess={() => {
+                onPrint()
+                setShowThermalPrinter(false)
+              }}
+              onPrintError={(error) => {
+                console.error('Print error:', error)
+              }}
+            />
+          )}
         </div>
       </div>
     </div>

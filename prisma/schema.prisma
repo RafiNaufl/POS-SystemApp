@@ -169,6 +169,7 @@ model Promotion {
   description   String?
   type          String   // PRODUCT_DISCOUNT, CATEGORY_DISCOUNT, BULK_DISCOUNT, BUY_X_GET_Y
   discountValue Float    // percentage (0-100) or fixed amount
+  discountType  String   // PERCENTAGE, FIXED
   minQuantity   Int?     // minimum quantity for bulk discount
   buyQuantity   Int?     // buy X quantity for BUY_X_GET_Y
   getQuantity   Int?     // get Y quantity for BUY_X_GET_Y

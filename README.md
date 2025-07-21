@@ -86,19 +86,30 @@ Aplikasi Point of Sale (POS) yang lengkap dan modern untuk bisnis penjualan maka
 - **Notifications**: React Hot Toast
 - **Date Handling**: date-fns
 
+## 🌐 Live Demo
+
+**🚀 Aplikasi sudah live dan dapat diakses di:**
+- **Production**: https://pos-system-jygwq094r-naufal-rafis-projects.vercel.app
+- **Preview**: https://pos-system-cm0yd0yn5-naufal-rafis-projects.vercel.app
+
+### Login Demo
+- **Admin**: admin@pos.com / password
+- **Kasir**: kasir@pos.com / password
+
 ## 📦 Instalasi
 
 ### Prasyarat
 - Node.js 18+ 
 - npm atau yarn
-- Database (PostgreSQL/MySQL/SQLite)
+- Vercel account (untuk deployment)
+- Prisma Accelerate database (cloud database)
 
 ### Langkah Instalasi
 
 1. **Clone repository**
    ```bash
    git clone <repository-url>
-   cd POS-App
+   cd pos-app
    ```
 
 2. **Install dependencies**
@@ -110,26 +121,22 @@ Aplikasi Point of Sale (POS) yang lengkap dan modern untuk bisnis penjualan maka
 
 3. **Setup environment variables**
    ```bash
-   cp .env.local.example .env.local
+   cp .env.example .env
    ```
    
-   Edit file `.env.local` dan sesuaikan dengan konfigurasi Anda:
+   Edit file `.env` dan sesuaikan dengan konfigurasi Anda:
    ```env
-   # Database
-   DATABASE_URL="postgresql://username:password@localhost:5432/pos_db"
+   # Database (Prisma Accelerate)
+   DATABASE_URL="prisma+postgres://accelerate.prisma-data.net/?api_key=your-api-key"
    
    # NextAuth
    NEXTAUTH_URL="http://localhost:3000"
    NEXTAUTH_SECRET="your-secret-key"
    
-   # JWT
-   JWT_SECRET="your-jwt-secret"
-   
-   # App Settings
-   APP_NAME="POS Makanan"
-   APP_VERSION="1.0.0"
-   TAX_RATE="0.1"
-   CURRENCY="IDR"
+   # Xendit Configuration (Payment Gateway)
+   XENDIT_SECRET_KEY="your-xendit-secret-key"
+   XENDIT_PUBLIC_KEY="your-xendit-public-key"
+   XENDIT_WEBHOOK_TOKEN="your-webhook-token"
    ```
 
 4. **Setup database**
@@ -138,10 +145,10 @@ Aplikasi Point of Sale (POS) yang lengkap dan modern untuk bisnis penjualan maka
    npx prisma generate
    
    # Run database migrations
-   npx prisma db push
+   npx prisma migrate dev --name init
    
-   # (Optional) Seed database dengan data sample
-   npx prisma db seed
+   # Seed database dengan data sample
+   npx tsx prisma/seed.ts
    ```
 
 5. **Jalankan aplikasi**
@@ -153,6 +160,26 @@ Aplikasi Point of Sale (POS) yang lengkap dan modern untuk bisnis penjualan maka
 
 6. **Buka aplikasi**
    Akses aplikasi di `http://localhost:3000`
+
+### Deployment ke Vercel
+
+1. **Link project ke Vercel**
+   ```bash
+   vercel link
+   ```
+
+2. **Set environment variables di Vercel Dashboard**
+   - `DATABASE_URL`: Prisma Accelerate connection string
+   - `NEXTAUTH_URL`: Production URL (https://your-app.vercel.app)
+   - `NEXTAUTH_SECRET`: Random secret key
+   - `XENDIT_SECRET_KEY`: Xendit secret key
+   - `XENDIT_PUBLIC_KEY`: Xendit public key
+   - `XENDIT_WEBHOOK_TOKEN`: Xendit webhook token
+
+3. **Deploy ke production**
+   ```bash
+   vercel --prod
+   ```
 
 ## 🗄️ Struktur Database
 
@@ -271,13 +298,38 @@ Aplikasi ini fully responsive dan dapat digunakan di:
 
 ## 🚀 Deployment
 
-### Vercel (Recommended)
-1. Push code ke GitHub
-2. Connect repository di Vercel
-3. Set environment variables
-4. Deploy
+### Status Deployment Saat Ini
+✅ **Aplikasi sudah berhasil di-deploy ke Vercel dengan konfigurasi berikut:**
+- **Database**: Prisma Accelerate (Cloud PostgreSQL)
+- **Authentication**: NextAuth.js dengan secret yang aman
+- **Payment Gateway**: Xendit integration
+- **Environment**: Production-ready
 
-### Docker
+### Vercel (Recommended) ✅ **DEPLOYED**
+1. ✅ Repository sudah terhubung ke Vercel
+2. ✅ Environment variables sudah dikonfigurasi:
+   - `DATABASE_URL`: Prisma Accelerate connection
+   - `NEXTAUTH_URL`: Production URL
+   - `NEXTAUTH_SECRET`: Secure secret key
+   - `XENDIT_*`: Payment gateway configuration
+3. ✅ Database migrations berhasil dijalankan
+4. ✅ Database seeding completed
+5. ✅ Production deployment active
+
+**Live URLs:**
+- Production: https://pos-system-jygwq094r-naufal-rafis-projects.vercel.app
+- Preview: https://pos-system-cm0yd0yn5-naufal-rafis-projects.vercel.app
+
+### Manual Deployment (Jika diperlukan)
+```bash
+# Deploy preview
+vercel
+
+# Deploy production
+vercel --prod
+```
+
+### Docker (Alternative)
 ```bash
 # Build image
 docker build -t pos-app .
@@ -285,6 +337,13 @@ docker build -t pos-app .
 # Run container
 docker run -p 3000:3000 pos-app
 ```
+
+### Database Setup (Cloud)
+✅ **Database sudah dikonfigurasi dengan:**
+- **Provider**: Prisma Accelerate
+- **Type**: PostgreSQL (Cloud)
+- **Status**: Connected and migrated
+- **Seeding**: Completed with sample data
 
 ## 🤝 Kontribusi
 
@@ -306,6 +365,16 @@ Jika Anda memiliki pertanyaan atau membutuhkan bantuan:
 - Issues: [GitHub Issues](link-to-issues)
 
 ## 🔄 Changelog
+
+### v2.1.0 (2025-01-19) ✅ **CURRENT VERSION**
+- 🚀 **Production deployment ke Vercel berhasil**
+- 🗄️ **Migrasi database ke Prisma Accelerate (Cloud PostgreSQL)**
+- 🔐 **NextAuth.js secret configuration untuk production**
+- 💳 **Xendit payment gateway integration**
+- 🌐 **Live demo tersedia dengan URL production dan preview**
+- 📦 **Database seeding dengan sample data lengkap**
+- 🔧 **Environment variables production-ready**
+- 📋 **Updated README dengan deployment status**
 
 ### v2.0.0 (2024-01-22)
 - 🎟️ Sistem voucher lengkap dengan validasi
